@@ -2,6 +2,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import genius.core.bidding.BidDetails;
 import genius.core.boaframework.AcceptanceStrategy;
 import genius.core.boaframework.Actions;
 import genius.core.boaframework.BOAparameter;
@@ -36,28 +37,34 @@ public class SquaredAcceptance extends AcceptanceStrategy {
 
     @Override
     public Actions determineAcceptability() {
-        double myFirstBid = negotiationSession.getOwnBidHistory().getFirstBidDetails().getMyUndiscountedUtil();
-        double opponentsFirstBid = negotiationSession.getOpponentBidHistory().getFirstBidDetails()
+    	double myFirstBid = 1;
+    	if (negotiationSession.getTimeline().getCurrentTime() == 0) {
+    		myFirstBid = negotiationSession.getOwnBidHistory().getFirstBidDetails().getMyUndiscountedUtil();
+    	} 
+    	
+        double opponentsBestBid = negotiationSession.getOpponentBidHistory().getBestBidDetails()
                 .getMyUndiscountedUtil();
         double nextMyBidUtil = offeringStrategy.getNextBid().getMyUndiscountedUtil();
         double lastOpponentBidUtil = negotiationSession.getOpponentBidHistory().getLastBidDetails()
                 .getMyUndiscountedUtil();
 
-        double percentageTimeLeft = negotiationSession.getTimeline().getTotalTime() -
-                negotiationSession.getTimeline().getCurrentTime();
+        double percentageTimeLeft = (negotiationSession.getTimeline().getTotalTime() -
+                negotiationSession.getTimeline().getCurrentTime())/negotiationSession.getTimeline().getTotalTime();
 
         double minimumOffer = 1;
-        if (myFirstBid/2 > opponentsFirstBid) {
-            minimumOffer = myFirstBid/2;
+        if (myFirstBid/1.1 > opponentsBestBid) {
+            minimumOffer = myFirstBid/1.1;
         } else {
-            minimumOffer = opponentsFirstBid;
+            minimumOffer = opponentsBestBid;
         }
 
-        double startingDifference = myFirstBid - opponentsFirstBid;
+        double startingDifference = myFirstBid - opponentsBestBid;
+        
+        double acceptableOffer = Math.sqrt(percentageTimeLeft*startingDifference) + minimumOffer;
 
-        if (lastOpponentBidUtil >= nextMyBidUtil) {
+        if (lastOpponentBidUtil >= nextMyBidUtil && lastOpponentBidUtil >= opponentsBestBid) {
             return Actions.Accept;
-        } else if (lastOpponentBidUtil >= Math.sqrt(percentageTimeLeft*startingDifference) + minimumOffer) {
+        } else if (lastOpponentBidUtil >= acceptableOffer) {
             return Actions.Accept;
         }
         return Actions.Reject;
