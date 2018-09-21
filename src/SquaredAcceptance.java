@@ -17,15 +17,20 @@ import genius.core.boaframework.OpponentModel;
  */
 public class SquaredAcceptance extends AcceptanceStrategy {
 
+	private double a;
+	private double b;
+	
     /**
      * Empty constructor for the BOA framework.
      */
     public SquaredAcceptance() {
     }
 
-    public SquaredAcceptance(NegotiationSession negoSession, OfferingStrategy strat) {
+    public SquaredAcceptance(NegotiationSession negoSession, OfferingStrategy strat, double alpha, double beta) {
         this.negotiationSession = negoSession;
         this.offeringStrategy = strat;
+        this.a = alpha;
+        this.b = beta;
     }
 
     @Override
@@ -33,7 +38,21 @@ public class SquaredAcceptance extends AcceptanceStrategy {
                      Map<String, Double> parameters) throws Exception {
         this.negotiationSession = negoSession;
         this.offeringStrategy = strat;
+        
+        if (parameters.get("a") != null || parameters.get("b") != null) {
+			a = parameters.get("a");
+			b = parameters.get("b");
+		} else {
+			a = 1.2;
+			b = 0.02;
+		}
     }
+    
+	@Override
+	public String printParameters() {
+		String str = "[a: " + a + "]";
+		return str;
+	}
 
     @Override
     public Actions determineAcceptability() {
@@ -61,7 +80,7 @@ public class SquaredAcceptance extends AcceptanceStrategy {
         // Minimum offer is the opponents best bid, or my opening bid divided by variable alpha. (which one is highest)
         double minimumOffer = 1;
         if (myFirstBid/1.2 > opponentsBestBid) {
-            minimumOffer = myFirstBid/1.2;
+            minimumOffer = myFirstBid/a;
         } else {
             minimumOffer = opponentsBestBid;
         }
@@ -69,10 +88,13 @@ public class SquaredAcceptance extends AcceptanceStrategy {
         // The difference in my utility between my first bid and the opponent best bid.
         double startingDifference = myFirstBid - opponentsBestBid;
         
-        // An acceptable offer: the closer we come to the end of a negotiation, the lower it gets. In the last round it is
+        // An acceptable offer: the closer we come to the end of a negotiation, the lower it gets. In the last 2% of rounds it is
         // equal to the minimumoffer variable.
-        double acceptableOffer = Math.sqrt(percentageTimeLeft*startingDifference) + minimumOffer;
-
+        double acceptableOffer = minimumOffer;
+        if (percentageTimeLeft > b) {
+        	acceptableOffer = Math.sqrt(percentageTimeLeft*startingDifference) + minimumOffer;
+        }
+        
         // Accept an offer if it is better than my next bid OR if it is better than the acceptableOffer variable
         if (lastOpponentBidUtil >= nextMyBidUtil && lastOpponentBidUtil >= opponentsBestBid) {
             return Actions.Accept;
@@ -83,6 +105,19 @@ public class SquaredAcceptance extends AcceptanceStrategy {
         // else: reject
         return Actions.Reject;
     }
+    
+	@Override
+	public Set<BOAparameter> getParameterSpec() {
+
+		Set<BOAparameter> set = new HashSet<BOAparameter>();
+		set.add(new BOAparameter("a", 1.2,
+				"Acceptable bid becomes starting offer divided by a if that is higher than the timedependent bid"));
+		
+		set.add(new BOAparameter("b", 0.02,
+				"The last b percentage of rounds, the agent will accept offers equal to its minimum offer variable"));
+
+		return set;
+	}
 
     @Override
     public String getName() {
