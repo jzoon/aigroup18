@@ -58,7 +58,7 @@ public class SquaredAcceptance extends AcceptanceStrategy {
     public Actions determineAcceptability() {
     	// Get my first bid utility if I already offered a bid
     	double myFirstBid = 1;
-    	if (negotiationSession.getTimeline().getCurrentTime() == 0) {
+    	if (negotiationSession.getTimeline().getCurrentTime() > 1) {
     		myFirstBid = negotiationSession.getOwnBidHistory().getFirstBidDetails().getMyUndiscountedUtil();
     	} 
     
@@ -79,7 +79,7 @@ public class SquaredAcceptance extends AcceptanceStrategy {
 
         // Minimum offer is the opponents best bid, or my opening bid divided by variable alpha. (which one is highest)
         double minimumOffer = 1;
-        if (myFirstBid/1.2 > opponentsBestBid) {
+        if (myFirstBid/a > opponentsBestBid) {
             minimumOffer = myFirstBid/a;
         } else {
             minimumOffer = opponentsBestBid;
