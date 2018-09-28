@@ -18,8 +18,8 @@ import genius.core.utility.EvaluatorDiscrete;
 
 public class Phoenix_BS extends OfferingStrategy{
     SortedOutcomeSpace outcomespace;
-    AbstractUtilitySpace utilitySpace
-    AdditiveUtilitySpace additiveUtilitySpace
+    AbstractUtilitySpace utilitySpace;
+    AdditiveUtilitySpace additiveUtilitySpace;
 
     @Override
     public void init(NegotiationSession negotiationSession, OpponentModel opponentModel, OMStrategy omStrategy,
@@ -27,6 +27,14 @@ public class Phoenix_BS extends OfferingStrategy{
         outcomespace = new SortedOutcomeSpace(negotiationSession.getUtilitySpace());
         utilitySpace = negotiationSession.getUtilitySpace();
         additiveUtilitySpace = (AdditiveUtilitySpace) utilitySpace;
+
+        // initialize omega with ones
+        List<Issue> issues = additiveUtilitySpace.getDomain().getIssues();
+        Map<Integer, Double> omega = new HashMap<>();
+        for (Issue issue : issues) {
+            int issueNumber = issue.getNumber();
+            omega.put(issueNumber, 1.0);
+        }
     }
 
     @Override
