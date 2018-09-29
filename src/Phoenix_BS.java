@@ -3,12 +3,10 @@ import java.util.*;
 import genius.core.Bid;
 import genius.core.Domain;
 import genius.core.bidding.BidDetails;
-import genius.core.boaframework.BOAparameter;
 import genius.core.boaframework.NegotiationSession;
 import genius.core.boaframework.OMStrategy;
 import genius.core.boaframework.OfferingStrategy;
 import genius.core.boaframework.OpponentModel;
-import genius.core.boaframework.OutcomeSpace;
 import genius.core.boaframework.SortedOutcomeSpace;
 import genius.core.issue.*;
 import genius.core.misc.Range;
@@ -21,20 +19,31 @@ public class Phoenix_BS extends OfferingStrategy{
     AbstractUtilitySpace utilitySpace;
     AdditiveUtilitySpace additiveUtilitySpace;
 
+    Map<Integer, Double> omega;
+    List<Double> gamma;
+
     @Override
     public void init(NegotiationSession negotiationSession, OpponentModel opponentModel, OMStrategy omStrategy,
                      Map<String, Double> parameters) {
+        this.negotiationSession = negotiationSession;
+
         outcomespace = new SortedOutcomeSpace(negotiationSession.getUtilitySpace());
         utilitySpace = negotiationSession.getUtilitySpace();
         additiveUtilitySpace = (AdditiveUtilitySpace) utilitySpace;
 
         // initialize omega with ones
         List<Issue> issues = additiveUtilitySpace.getDomain().getIssues();
-        Map<Integer, Double> omega = new HashMap<>();
+        omega = new HashMap<>();
         for (Issue issue : issues) {
             int issueNumber = issue.getNumber();
             omega.put(issueNumber, 1.0);
         }
+
+        // initialize gamma
+        gamma = new ArrayList<>();
+        gamma.add(1.0);
+        gamma.add(0.8);
+        gamma.add(0.3);
     }
 
     @Override
@@ -45,7 +54,7 @@ public class Phoenix_BS extends OfferingStrategy{
     @Override
     public BidDetails determineNextBid() {
         // determine minimal utility of the next bid
-        double lowerBound = 0;
+        double lowerBound = 0.7;
         double upperBound = 1;
         Range range = new Range(lowerBound, upperBound);
 
@@ -56,11 +65,11 @@ public class Phoenix_BS extends OfferingStrategy{
         // compute rating for all available bids
         List<Double> ratings = new ArrayList<>();
         for (int i = 0; i < availableBids.size(); i++) {
-            ratings.set(i, computeRating(availableBids.get(i), referenceBids));
+            ratings.add(i, computeRating(availableBids.get(i), referenceBids, omega, gamma));
         }
 
         // get index of the bid with highest rating
-        double highestRating = 0;
+        double highestRating = Double.MIN_VALUE;
         int indexHighestRating = 0;
         for (int j = 0; j < ratings.size(); j++) {
             double rating = ratings.get(j);
@@ -69,6 +78,9 @@ public class Phoenix_BS extends OfferingStrategy{
                 indexHighestRating = j;
             }
         }
+
+        double util = availableBids.get(indexHighestRating).getMyUndiscountedUtil();
+        System.out.println("Rating: -" + Double.toString(highestRating) + ", Utility: " + Double.toString(util));
 
         return availableBids.get(indexHighestRating);
     }
@@ -106,9 +118,18 @@ public class Phoenix_BS extends OfferingStrategy{
             double distance = euclideanDistance(omegaArray, bidValueArray, referenceBidValueArray);
 
             rating += gamma.get(i) * distance;
+
+            // debug
+            //double util = bidDetails.getMyUndiscountedUtil();
+            //System.out.println("Rating: -" + Double.toString(rating) + ", Utility: " + Double.toString(util));
         }
 
         return -1 * rating;
+    }
+
+    public void updateOmega(Map<Integer, Double> omega) {
+        negotiationSession.getOpponentBidHistory().getLastBid();
+
     }
 
     /**
@@ -117,7 +138,7 @@ public class Phoenix_BS extends OfferingStrategy{
      * @return list of bids which a utility in the given range.
      */
     public List<BidDetails> getAvailableBids(Range range) {
-        return negotiationSession.getOutcomeSpace().getBidsinRange(range);
+        return outcomespace.getBidsinRange(range);
     }
 
     /**
