@@ -19,24 +19,27 @@ public class Phoenix_BS extends OfferingStrategy{
 
     Map<Integer, Map<Integer, Double>> omega; // issues weights that are approximated using a frequency-based method
     List<Double> gamma; // weights for the three reference bids
+    double bias; // lower bias gives higher ratings a higher probability to be chosen (between 0 and 1)
 
     @Override
     public void init(NegotiationSession negotiationSession, OpponentModel opponentModel, OMStrategy omStrategy,
                      Map<String, Double> parameters) {
         this.negotiationSession = negotiationSession;
 
-        // initialize gamma
+        // initialize gamma and bias
         if (parameters != null && parameters.get("gamma_first") != null && parameters.get("gamma_best") != null &&
-                parameters.get("gamma_last") != null) {
+                parameters.get("gamma_last") != null && parameters.get("bias") != null) {
             gamma = new ArrayList<>();
             gamma.add(parameters.get("gamma_first"));
             gamma.add(parameters.get("gamma_best"));
             gamma.add(parameters.get("gamma_last"));
+            bias = parameters.get("bias");
         } else {
             gamma = new ArrayList<>();
             gamma.add(1.0);
             gamma.add(0.8);
             gamma.add(0.3);
+            bias = 0.25;
         }
 
         // get outcome and utility spaces and list of issues in this domain
@@ -70,7 +73,7 @@ public class Phoenix_BS extends OfferingStrategy{
     @Override
     public BidDetails determineNextBid() {
         // determine minimal utility of the next bid
-        double lowerBound = 0.7;
+        double lowerBound = 0.8;
         double upperBound = 1;
         Range range = new Range(lowerBound, upperBound);
 
@@ -87,18 +90,8 @@ public class Phoenix_BS extends OfferingStrategy{
             ratings.add(i, computeRating(availableBids.get(i), referenceBids, omega, gamma));
         }
 
-        // get index of the bid with highest rating (closest to zero)
-        double highestRating = -1.0 * Double.MAX_VALUE;
-        int indexHighestRating = 0;
-        for (int j = 0; j < ratings.size(); j++) {
-            double rating = ratings.get(j);
-            if (rating > highestRating) {
-                highestRating = rating;
-                indexHighestRating = j;
-            }
-        }
-
-        return availableBids.get(indexHighestRating);
+        // choose bid randomly, where bids with higher rating have higher probability to be chosen
+        return chooseBid(availableBids, ratings, bias);
     }
 
     /**
@@ -151,7 +144,7 @@ public class Phoenix_BS extends OfferingStrategy{
 
     /**
      * update issues weights that are approximated using a frequency-based method
-     * @param omega
+     * @param omega issues weights
      */
     public void updateOmega(Map<Integer, Map<Integer, Double>> omega) {
         List<Issue> issuesInThisDomain = additiveUtilitySpace.getDomain().getIssues();
@@ -173,6 +166,64 @@ public class Phoenix_BS extends OfferingStrategy{
                 omega.replace(issueNumber, values);
             }
         }
+    }
+
+    /**
+     * choose bid randomly, where bids with higher rating have higher probability to be chosen
+     * @param availableBids list of available bids
+     * @param ratings list of ratings for these available bids
+     * @param bias amount of bias towards highest rating (between 0 and 1)
+     * @return bid
+     */
+    public BidDetails chooseBid(List<BidDetails> availableBids, List<Double> ratings, double bias) {
+        TreeMap<Double, List<BidDetails>> sortedBids = new TreeMap<>();
+        double lowestRating = 0;
+        double highestRating = -1.0 * Double.MAX_VALUE;
+
+        for (int i = 0; i < availableBids.size(); i++) {
+            // get bid details and corresponding rating
+            BidDetails bidDetails = availableBids.get(i);
+            double rating = ratings.get(i);
+
+            // update lowest or highest rating
+            if (rating > highestRating) {
+                highestRating = rating;
+            } else if (rating < lowestRating) {
+                lowestRating = rating;
+            }
+
+            // bids with same rating gets put into the same list
+            if (sortedBids.containsKey(rating)) {
+                List<BidDetails> bidsWithSameRating = sortedBids.get(rating);
+                bidsWithSameRating.add(bidDetails);
+                sortedBids.replace(rating, bidsWithSameRating);
+            } else {
+                List<BidDetails> bidsWithSameRating = new ArrayList<>();
+                bidsWithSameRating.add(bidDetails);
+                sortedBids.put(rating, bidsWithSameRating);
+            }
+        }
+
+        // sample a double between lowest rating and highest rating, with more bias towards highest rating
+        double sampleRating = lowestRating + (highestRating - lowestRating) * Math.pow(Math.random(), bias);
+        Map.Entry<Double, List<BidDetails>> ceiling = sortedBids.ceilingEntry(sampleRating);
+        Map.Entry<Double, List<BidDetails>> floor = sortedBids.floorEntry(sampleRating);
+
+        // check which key is closer to sample rating
+        List<BidDetails> closestBids;
+        if ((ceiling.getKey() - sampleRating) < (sampleRating - floor.getKey())) {
+            // ceiling key is closer
+            closestBids = ceiling.getValue();
+        } else {
+            // floor key is closer
+            closestBids = floor.getValue();
+        }
+
+        // choose random bid from closest bids
+        int size = closestBids.size();
+        int index = (int) (Math.random() * size);
+
+        return closestBids.get(index);
     }
 
     /**
@@ -223,6 +274,8 @@ public class Phoenix_BS extends OfferingStrategy{
                 "Importance of the best bid of the opponent"));
         set.add(new BOAparameter("gamma_last", 0.3,
                 "Importance of the last bid of the opponent"));
+        set.add(new BOAparameter("bias", 0.25,
+                "Lower bias: higher ratings have higher probability (between 0 and 1)"));
         return set;
     }
 
