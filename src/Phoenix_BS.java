@@ -91,7 +91,7 @@ public class Phoenix_BS extends OfferingStrategy{
         }
 
         // choose bid randomly, where bids with higher rating have higher probability to be chosen
-        return chooseBid(availableBids, ratings, bias);
+        return drawBidFollowRating(availableBids, ratings, bias);
     }
 
     /**
@@ -175,7 +175,7 @@ public class Phoenix_BS extends OfferingStrategy{
      * @param bias amount of bias towards highest rating (between 0 and 1)
      * @return bid
      */
-    public BidDetails chooseBid(List<BidDetails> availableBids, List<Double> ratings, double bias) {
+    public BidDetails drawBidFollowRating(List<BidDetails> availableBids, List<Double> ratings, double bias) {
         TreeMap<Double, List<BidDetails>> sortedBids = new TreeMap<>();
         double lowestRating = 0;
         double highestRating = -1.0 * Double.MAX_VALUE;
