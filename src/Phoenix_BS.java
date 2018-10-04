@@ -73,13 +73,17 @@ public class Phoenix_BS extends OfferingStrategy{
     @Override
     public BidDetails determineNextBid() {
         // determine minimal utility of the next bid
-        double lowerBound = 0.8;
+        double lowerBound = 0.8;//findLowerBound();
         double upperBound = 1;
         Range range = new Range(lowerBound, upperBound);
 
         // get available bids greater than minimal utility and get reference bids
         List<BidDetails> availableBids = getAvailableBids(range);
         List<BidDetails> referenceBids = getReferenceBids();
+        
+        if (availableBids.size() < 4) {
+        	return availableBids.get(0);
+        }
 
         // update omega using last bid of the opponent
         updateOmega(omega);
@@ -92,6 +96,41 @@ public class Phoenix_BS extends OfferingStrategy{
 
         // choose bid randomly, where bids with higher rating have higher probability to be chosen
         return drawBidFollowRating(availableBids, ratings, bias);
+    }
+    
+    public double findLowerBound() {
+	   	double minimumOffer = negotiationSession.getOpponentBidHistory().getBestBidDetails().getMyUndiscountedUtil();
+		double difference = outcomespace.getMaxBidPossible().getMyUndiscountedUtil() - minimumOffer;
+		
+		if (difference >= 0) {
+			double percentageTimeLeft = (negotiationSession.getTimeline().getTotalTime() -
+					negotiationSession.getTimeline().getCurrentTime())/negotiationSession.getTimeline().getTotalTime();
+			double acceptableOffer = Math.sqrt(percentageTimeLeft*difference) + minimumOffer;
+		
+			if (acceptableOffer < negotiationSession.getMaxBidinDomain().getMyUndiscountedUtil()) {
+				return acceptableOffer;
+			}
+		}
+    	
+    	return negotiationSession.getMaxBidinDomain().getMyUndiscountedUtil();
+    }
+    
+    public BidDetails findBestBidInShortList(List<BidDetails> list) {
+    	if (list.isEmpty()) {
+    		return negotiationSession.getMaxBidinDomain();
+    	}
+    	
+    	BidDetails bestBid = null;
+    	double util = -1;
+    	
+    	for (int i = 0; i < list.size(); i++) {
+    		if (list.get(i).getMyUndiscountedUtil() > util) {
+    			util = list.get(i).getMyUndiscountedUtil();
+    			bestBid = list.get(i);
+    		}
+    	}
+    	
+    	return bestBid;
     }
 
     /**
@@ -232,7 +271,7 @@ public class Phoenix_BS extends OfferingStrategy{
      * @return list of bids which a utility in the given range.
      */
     public List<BidDetails> getAvailableBids(Range range) {
-        return outcomespace.getBidsinRange(range);
+    	return outcomespace.getBidsinRange(range);
     }
 
     /**
@@ -281,6 +320,6 @@ public class Phoenix_BS extends OfferingStrategy{
 
     @Override
     public String getName() {
-        return "Group18_BS";
+        return "Group18_BS2";
     }
 }
