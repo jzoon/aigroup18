@@ -81,10 +81,6 @@ public class Phoenix_BS extends OfferingStrategy{
         List<BidDetails> availableBids = getAvailableBids(range);
         List<BidDetails> referenceBids = getReferenceBids();
         
-        if (availableBids.size() < 4) {
-        	return availableBids.get(0);
-        }
-
         // update omega using last bid of the opponent
         updateOmega(omega);
 
@@ -98,39 +94,27 @@ public class Phoenix_BS extends OfferingStrategy{
         return drawBidFollowRating(availableBids, ratings, bias);
     }
     
+    /**
+     * Computes the lower bound value, depending on the time left, the best offer of the opponent and the best possible offer
+     * @return lower bound value (double)
+     */
     public double findLowerBound() {
+    	double maximumOffer = outcomespace.getMaxBidPossible().getMyUndiscountedUtil();
 	   	double minimumOffer = negotiationSession.getOpponentBidHistory().getBestBidDetails().getMyUndiscountedUtil();
-		double difference = outcomespace.getMaxBidPossible().getMyUndiscountedUtil() - minimumOffer;
+		double difference = maximumOffer - minimumOffer;
 		
 		if (difference >= 0) {
 			double percentageTimeLeft = (negotiationSession.getTimeline().getTotalTime() -
 					negotiationSession.getTimeline().getCurrentTime())/negotiationSession.getTimeline().getTotalTime();
-			double acceptableOffer = Math.sqrt(percentageTimeLeft*difference) + minimumOffer;
+			
+			double acceptableOffer = maximumOffer - (difference*Math.pow((1-percentageTimeLeft), 2));
 		
-			if (acceptableOffer < negotiationSession.getMaxBidinDomain().getMyUndiscountedUtil()) {
+			if (acceptableOffer < maximumOffer) {
 				return acceptableOffer;
 			}
 		}
     	
-    	return negotiationSession.getMaxBidinDomain().getMyUndiscountedUtil();
-    }
-    
-    public BidDetails findBestBidInShortList(List<BidDetails> list) {
-    	if (list.isEmpty()) {
-    		return negotiationSession.getMaxBidinDomain();
-    	}
-    	
-    	BidDetails bestBid = null;
-    	double util = -1;
-    	
-    	for (int i = 0; i < list.size(); i++) {
-    		if (list.get(i).getMyUndiscountedUtil() > util) {
-    			util = list.get(i).getMyUndiscountedUtil();
-    			bestBid = list.get(i);
-    		}
-    	}
-    	
-    	return bestBid;
+    	return maximumOffer;
     }
 
     /**
