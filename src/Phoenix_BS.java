@@ -188,7 +188,8 @@ public class Phoenix_BS extends OfferingStrategy{
             // update lowest or highest rating
             if (rating > highestRating) {
                 highestRating = rating;
-            } else if (rating < lowestRating) {
+            }
+            if (rating < lowestRating) {
                 lowestRating = rating;
             }
 
