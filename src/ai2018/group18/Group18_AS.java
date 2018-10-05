@@ -86,13 +86,13 @@ public class Group18_AS extends AcceptanceStrategy {
         }
 
         // The difference in my utility between my first bid and the opponent best bid.
-        double startingDifference = myFirstBid - opponentsBestBid;
+        double difference = myFirstBid - opponentsBestBid;
         
         // An acceptable offer: the closer we come to the end of a negotiation, the lower it gets. In the last 2% of rounds it is
         // equal to the minimumoffer variable.
         double acceptableOffer = minimumOffer;
         if (percentageTimeLeft > b) {
-        	acceptableOffer = Math.sqrt(percentageTimeLeft*startingDifference) + minimumOffer;
+        	acceptableOffer = myFirstBid - (difference*Math.pow((1-percentageTimeLeft), 2));
         }
         
         // Accept an offer if it is better than my next bid OR if it is better than the acceptableOffer variable

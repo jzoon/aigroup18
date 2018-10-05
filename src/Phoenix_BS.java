@@ -100,6 +100,7 @@ public class Phoenix_BS extends OfferingStrategy{
      */
     public double findLowerBound() {
     	double maximumOffer = outcomespace.getMaxBidPossible().getMyUndiscountedUtil();
+    	double lowestOffer = maximumOffer/1.4;
 	   	double minimumOffer = negotiationSession.getOpponentBidHistory().getBestBidDetails().getMyUndiscountedUtil();
 		double difference = maximumOffer - minimumOffer;
 		
@@ -109,8 +110,10 @@ public class Phoenix_BS extends OfferingStrategy{
 			
 			double acceptableOffer = maximumOffer - (difference*Math.pow((1-percentageTimeLeft), 2));
 		
-			if (acceptableOffer < maximumOffer) {
+			if (acceptableOffer < maximumOffer && acceptableOffer > lowestOffer) {
 				return acceptableOffer;
+			} else if (acceptableOffer < lowestOffer) {
+				return lowestOffer;
 			}
 		}
     	
