@@ -73,7 +73,7 @@ public class Phoenix_BS extends OfferingStrategy{
     @Override
     public BidDetails determineNextBid() {
         // determine minimal utility of the next bid
-        double lowerBound = 0.8;//findLowerBound();
+        double lowerBound = findLowerBound();
         double upperBound = 1;
         Range range = new Range(lowerBound, upperBound);
 
