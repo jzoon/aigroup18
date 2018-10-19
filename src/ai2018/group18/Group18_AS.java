@@ -11,9 +11,9 @@ import genius.core.boaframework.OfferingStrategy;
 import genius.core.boaframework.OpponentModel;
 
 /**
- * Acceptance class
- * 
- * Created by Job Zoon
+ * This acceptance class will accept bids if they are higher than the threshold,
+ * defined by a function of time and the difference between our own best offer 
+ * and the opponents best offer.
  */
 public class Group18_AS extends AcceptanceStrategy {
 
@@ -54,6 +54,9 @@ public class Group18_AS extends AcceptanceStrategy {
 		return str;
 	}
 
+	/**
+	 * Determines the acceptability based on the acceptance function.
+	 */
     @Override
     public Actions determineAcceptability() {
     	// Get my first bid utility if I already offered a bid
