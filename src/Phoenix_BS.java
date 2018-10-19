@@ -1,16 +1,15 @@
-import java.util.*;
-
 import genius.core.Bid;
 import genius.core.bidding.BidDetails;
 import genius.core.boaframework.*;
+import genius.core.issue.Issue;
 import genius.core.issue.Value;
 import genius.core.issue.ValueDiscrete;
-import genius.core.issue.Issue;
-import genius.core.issue.IssueDiscrete;
 import genius.core.misc.Range;
 import genius.core.utility.AbstractUtilitySpace;
 import genius.core.utility.AdditiveUtilitySpace;
 import genius.core.utility.EvaluatorDiscrete;
+
+import java.util.*;
 
 public class Phoenix_BS extends OfferingStrategy{
     SortedOutcomeSpace outcomespace;
@@ -56,6 +55,9 @@ public class Phoenix_BS extends OfferingStrategy{
 
     @Override
     public BidDetails determineNextBid() {
+        // update opponent model
+        opponentModel.updateModel(outcomespace.getMaxBidPossible().getBid());
+
         // determine minimal utility of the next bid
         double lowerBound = findLowerBound();
         double upperBound = 1;
