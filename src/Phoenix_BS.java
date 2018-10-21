@@ -264,6 +264,6 @@ public class Phoenix_BS extends OfferingStrategy{
 
     @Override
     public String getName() {
-        return "Phoenix_BS";
+        return "Phoenix_BS_New";
     }
 }
