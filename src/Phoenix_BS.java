@@ -1,21 +1,15 @@
-import genius.core.Bid;
 import genius.core.bidding.BidDetails;
 import genius.core.boaframework.*;
-import genius.core.issue.Issue;
-import genius.core.issue.Value;
-import genius.core.issue.ValueDiscrete;
 import genius.core.misc.Range;
-import genius.core.utility.AbstractUtilitySpace;
-import genius.core.utility.AdditiveUtilitySpace;
-import genius.core.utility.EvaluatorDiscrete;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class Phoenix_BS extends OfferingStrategy {
 	
     SortedOutcomeSpace outcomespace;
-    List<Double> gamma; // weights for the three reference bids
-    double bias; // lower bias gives higher ratings a higher probability to be chosen (between 0 and 1)
 
     @Override
     public void init(NegotiationSession negotiationSession, OpponentModel opponentModel, OMStrategy omStrategy,
@@ -33,6 +27,10 @@ public class Phoenix_BS extends OfferingStrategy {
         return outcomespace.getMaxBidPossible();
     }
 
+    /**
+     * Select the next bid for the opponent using opponent model and opponent model strategy
+     * @return next bid
+     */
     @Override
     public BidDetails determineNextBid() {
         // update opponent model

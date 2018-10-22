@@ -14,7 +14,6 @@ import genius.core.boaframework.OpponentModel;
 import genius.core.issue.Issue;
 import genius.core.issue.Value;
 import genius.core.issue.ValueDiscrete;
-import genius.core.misc.Range;
 import genius.core.utility.AbstractUtilitySpace;
 import genius.core.utility.AdditiveUtilitySpace;
 import genius.core.utility.EvaluatorDiscrete;
@@ -49,7 +48,12 @@ public class Phoenix_OMS extends OMStrategy {
 		utilitySpace = negotiationSession.getUtilitySpace();
 		additiveUtilitySpace = (AdditiveUtilitySpace) utilitySpace;
 	}
-	
+
+    /**
+     * Compute ratings for all available bids and draw one bid using those ratings
+     * @param allBids list of all available bids
+     * @return bid
+     */
 	public BidDetails getBid(List<BidDetails> allBids) {
         // get available bids greater than minimal utility and get reference bids
         List<BidDetails> referenceBids = getReferenceBids();
@@ -68,8 +72,15 @@ public class Phoenix_OMS extends OMStrategy {
 	public boolean canUpdateOM() {
 		return true;
 	}
-	
-	public double computeRating(BidDetails bidDetails, List<BidDetails> referenceBids, List<Double> gamma) {
+
+    /**
+     * Compute rating of a bid against reference bids
+     * @param bidDetails compute for this bid
+     * @param referenceBids first, best and last bids of the opponent
+     * @param gamma weights for the three reference bids
+     * @return rating (closer to zero is more similar)
+     */
+    public double computeRating(BidDetails bidDetails, List<BidDetails> referenceBids, List<Double> gamma) {
         Bid bid = bidDetails.getBid();
         List<Issue> issues = bid.getIssues();
         Map<Integer, Value> values = bid.getValues();
@@ -108,8 +119,15 @@ public class Phoenix_OMS extends OMStrategy {
 
         return -1 * rating;
     }
-	
-	public BidDetails drawBidFollowRating(List<BidDetails> availableBids, List<Double> ratings, double bias) {
+
+    /**
+     * Choose bid randomly, where bids with higher rating have higher probability to be chosen
+     * @param availableBids list of available bids
+     * @param ratings list of ratings for these available bids
+     * @param bias amount of bias towards highest rating (between 0 and 1)
+     * @return bid
+     */
+    public BidDetails drawBidFollowRating(List<BidDetails> availableBids, List<Double> ratings, double bias) {
         TreeMap<Double, List<BidDetails>> sortedBids = new TreeMap<>();
         double lowestRating = 0;
         double highestRating = -1.0 * Double.MAX_VALUE;
