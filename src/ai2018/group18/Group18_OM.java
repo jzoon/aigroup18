@@ -28,6 +28,12 @@ public class Group18_OM extends OpponentModel {
         initializeOmega();
     }
 
+    /**
+     * Update Omega using the last bid and first bid of the opponent:
+     * Increment by one if the same issue values are present in both bids.
+     * @param opponentBid not used
+     * @param time not used
+     */
     @Override
     public void updateModel(Bid opponentBid, double time) {
         // if there is not more than one bid, there is no need to update the model
@@ -45,6 +51,7 @@ public class Group18_OM extends OpponentModel {
                 EvaluatorDiscrete value = (EvaluatorDiscrete) e.getValue();
                 IssueDiscrete issue = ((IssueDiscrete) e.getKey());
 
+                // get values of last and first bid of the opponent
                 ValueDiscrete lastBidValue = (ValueDiscrete) lastBidValues.get(issue.getNumber());
                 ValueDiscrete firstBidValue = (ValueDiscrete) firstBidValues.get(issue.getNumber());
 
@@ -66,7 +73,9 @@ public class Group18_OM extends OpponentModel {
         opponentUtilitySpace.normalizeWeights();
     }
 
-
+    /**
+     * Initialize Omega with ones for each value in every issue of this domain.
+     */
     public void initializeOmega() {
         for (Map.Entry<Objective, Evaluator> e : opponentUtilitySpace.getEvaluators()) {
 

@@ -1,22 +1,17 @@
 package ai2018.group18;
-import genius.core.Bid;
+
 import genius.core.bidding.BidDetails;
 import genius.core.boaframework.*;
-import genius.core.issue.Issue;
-import genius.core.issue.Value;
-import genius.core.issue.ValueDiscrete;
 import genius.core.misc.Range;
-import genius.core.utility.AbstractUtilitySpace;
-import genius.core.utility.AdditiveUtilitySpace;
-import genius.core.utility.EvaluatorDiscrete;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class Group18_BS extends OfferingStrategy {
 	
     SortedOutcomeSpace outcomespace;
-    List<Double> gamma; // weights for the three reference bids
-    double bias; // lower bias gives higher ratings a higher probability to be chosen (between 0 and 1)
 
     @Override
     public void init(NegotiationSession negotiationSession, OpponentModel opponentModel, OMStrategy omStrategy,
@@ -50,6 +45,8 @@ public class Group18_BS extends OfferingStrategy {
         // get available bids greater than minimal utility and get reference bids
         List<BidDetails> availableBids = getAvailableBids(range);
 
+
+        // return bid that is drawn from the available bids
         return omStrategy.getBid(availableBids);
     }
     
@@ -58,25 +55,32 @@ public class Group18_BS extends OfferingStrategy {
      * @return lower bound value (double)
      */
     public double findLowerBound() {
-    	double maximumOffer = outcomespace.getMaxBidPossible().getMyUndiscountedUtil();
-    	double lowestOffer = maximumOffer/1.4;
+        // calculate lowest utility that we will ever propose
+    	double lowerBound = outcomespace.getMaxBidPossible().getMyUndiscountedUtil();
+    	double lowestOffer = lowerBound / 1.4;
+
+    	// find best offer of the opponent and compare to best offer possible
 	   	double minimumOffer = negotiationSession.getOpponentBidHistory().getBestBidDetails().getMyUndiscountedUtil();
-		double difference = maximumOffer - minimumOffer;
-		
+		double difference = lowerBound - minimumOffer;
+
+		// if best offer of the opponent is less than our best offer possible
 		if (difference >= 0) {
 			double percentageTimeLeft = (negotiationSession.getTimeline().getTotalTime() -
-					negotiationSession.getTimeline().getCurrentTime())/negotiationSession.getTimeline().getTotalTime();
-			
-			double acceptableOffer = maximumOffer - (difference*Math.pow((1-percentageTimeLeft), 2));
-		
-			if (acceptableOffer < maximumOffer && acceptableOffer > lowestOffer) {
+					negotiationSession.getTimeline().getCurrentTime()) / negotiationSession.getTimeline().getTotalTime();
+
+			// calculate utility of acceptable offer depending on the time left
+			double acceptableOffer = lowerBound - (difference * Math.pow((1 - percentageTimeLeft), 2));
+
+			// decide if we use utility of time dependant offer or our lowest possible offer
+			if (acceptableOffer < lowerBound && acceptableOffer > lowestOffer) {
 				return acceptableOffer;
 			} else if (acceptableOffer < lowestOffer) {
 				return lowestOffer;
 			}
 		}
-    	
-    	return maximumOffer;
+
+		// else utility is best possible offer
+    	return lowerBound;
     }
 
     /**
