@@ -38,13 +38,16 @@ public class Group18_BS extends OfferingStrategy {
         opponentModel.updateModel(outcomespace.getMaxBidPossible().getBid());
 
         // determine minimal utility of the next bid
-        double lowerBound = findLowerBound();
+        boolean discounted = false;
+        if (negotiationSession.getDiscountFactor() < 0.7) {
+        	discounted = true;
+        }
+        double lowerBound = findLowerBound(discounted);
         double upperBound = 1;
         Range range = new Range(lowerBound, upperBound);
 
         // get available bids greater than minimal utility and get reference bids
         List<BidDetails> availableBids = getAvailableBids(range);
-
 
         // return bid that is drawn from the available bids
         return omStrategy.getBid(availableBids);
@@ -54,7 +57,7 @@ public class Group18_BS extends OfferingStrategy {
      * Computes the lower bound value, depending on the time left, the best offer of the opponent and the best possible offer
      * @return lower bound value (double)
      */
-    public double findLowerBound() {
+    public double findLowerBound(boolean discounted) {
         // calculate lowest utility that we will ever propose
     	double lowerBound = outcomespace.getMaxBidPossible().getMyUndiscountedUtil();
     	double lowestOffer = lowerBound / 1.4;
@@ -62,14 +65,25 @@ public class Group18_BS extends OfferingStrategy {
     	// find best offer of the opponent and compare to best offer possible
 	   	double minimumOffer = negotiationSession.getOpponentBidHistory().getBestBidDetails().getMyUndiscountedUtil();
 		double difference = lowerBound - minimumOffer;
-
+		
 		// if best offer of the opponent is less than our best offer possible
 		if (difference >= 0) {
 			double percentageTimeLeft = (negotiationSession.getTimeline().getTotalTime() -
 					negotiationSession.getTimeline().getCurrentTime()) / negotiationSession.getTimeline().getTotalTime();
 
 			// calculate utility of acceptable offer depending on the time left
-			double acceptableOffer = lowerBound - (difference * Math.pow((1 - percentageTimeLeft), 2));
+			double acceptableOffer;
+			if (discounted) {
+				double discountFactor = 0.45-negotiationSession.getDiscountFactor();
+				
+				if (discountFactor > 0) {
+					acceptableOffer = minimumOffer - discountFactor;
+				} else {
+					acceptableOffer = minimumOffer;
+				}
+			} else {
+				acceptableOffer = lowerBound - (difference * Math.pow((1 - percentageTimeLeft), 2));
+			}
 
 			// decide if we use utility of time dependant offer or our lowest possible offer
 			if (acceptableOffer < lowerBound && acceptableOffer > lowestOffer) {

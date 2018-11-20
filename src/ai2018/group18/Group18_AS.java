@@ -59,54 +59,97 @@ public class Group18_AS extends AcceptanceStrategy {
 	 */
     @Override
     public Actions determineAcceptability() {
-    	// Get my first bid utility if I already offered a bid
+    	if (negotiationSession.getDiscountFactor() < 0.7) {
+    		return determineAcceptabilityAction(true);
+    	} else {
+    		return determineAcceptabilityAction(false);
+    	}
+    }
+    
+    /**
+	 * Determines the acceptability based on the undiscounted acceptance function.
+	 * Acceptance function is based on the time left and the difference between our best offer and the opponents best offer.
+	 */
+    public Actions determineAcceptabilityAction(boolean discount) {
     	double myFirstBid = 1;
     	if (negotiationSession.getTimeline().getCurrentTime() > 1) {
     		myFirstBid = negotiationSession.getOwnBidHistory().getFirstBidDetails().getMyUndiscountedUtil();
     	} 
-    
-    	// Get opponents best bid utility
         double opponentsBestBid = negotiationSession.getOpponentBidHistory().getBestBidDetails()
                 .getMyUndiscountedUtil();
-        
-        // Get my next bid utility
-        double nextMyBidUtil = offeringStrategy.getNextBid().getMyUndiscountedUtil();
-        
-        // Get opponents last bid utility
-        double lastOpponentBidUtil = negotiationSession.getOpponentBidHistory().getLastBidDetails()
+        double myNextBid = offeringStrategy.getNextBid().getMyUndiscountedUtil();
+        double lastOpponentBid = negotiationSession.getOpponentBidHistory().getLastBidDetails()
                 .getMyUndiscountedUtil();
-
-        // Percentage time left, number between 1 and 0.
+        
         double percentageTimeLeft = (negotiationSession.getTimeline().getTotalTime() -
                 negotiationSession.getTimeline().getCurrentTime())/negotiationSession.getTimeline().getTotalTime();
+        
+        double minimumOffer = findMinimumOffer(myFirstBid, opponentsBestBid);
+        double difference = myFirstBid - opponentsBestBid;
+        
+        double acceptableOffer;
+        if (discount) {
+        	acceptableOffer = findAcceptableOfferDiscounted(minimumOffer, percentageTimeLeft, myFirstBid, difference);
+        } else {
+        	acceptableOffer = findAcceptableOffer(minimumOffer, percentageTimeLeft, myFirstBid, difference);
+        }
 
-        // Minimum offer is the opponents best bid, or my opening bid divided by variable alpha. (which one is highest)
+        // Accept an offer if it is better than my next bid OR if it is better than the acceptableOffer variable
+        if (lastOpponentBid >= myNextBid && lastOpponentBid >= opponentsBestBid) {
+            return Actions.Accept;
+        } else if (lastOpponentBid >= acceptableOffer) {
+            return Actions.Accept;
+        } else {
+        	return Actions.Reject;
+        }
+    }
+    
+    /**
+     * Determines minimum offer based on our optimal bid and the opponent's best bid.
+     * @param myFirstBid
+     * @param opponentsBestBid
+     * @return minimimOffer
+     */
+    public double findMinimumOffer(double myFirstBid, double opponentsBestBid) {
         double minimumOffer = 1;
         if (myFirstBid/a > opponentsBestBid) {
             minimumOffer = myFirstBid/a;
         } else {
             minimumOffer = opponentsBestBid;
         }
-
-        // The difference in my utility between my first bid and the opponent best bid.
-        double difference = myFirstBid - opponentsBestBid;
         
-        // An acceptable offer: the closer we come to the end of a negotiation, the lower it gets. In the last 2% of rounds it is
-        // equal to the minimumoffer variable.
-        double acceptableOffer = minimumOffer;
+        return minimumOffer;
+    }
+    
+    /**
+     * An acceptable offer: the closer we come to the end of a negotiation, the lower it gets. In the last 2% of rounds it is
+     * equal to the minimumoffer variable.
+     * @param minimumOffer
+     * @param percentageTimeLeft
+     * @param myFirstBid
+     * @param difference
+     * @return acceptableOffer utility
+     */
+    public double findAcceptableOffer(double minimumOffer, double percentageTimeLeft, double myFirstBid, double difference) {
+    	double acceptableOffer = minimumOffer;
         if (percentageTimeLeft > b) {
         	acceptableOffer = myFirstBid - (difference*Math.pow((1-percentageTimeLeft), 2));
         }
         
-        // Accept an offer if it is better than my next bid OR if it is better than the acceptableOffer variable
-        if (lastOpponentBidUtil >= nextMyBidUtil && lastOpponentBidUtil >= opponentsBestBid) {
-            return Actions.Accept;
-        } else if (lastOpponentBidUtil >= acceptableOffer) {
-            return Actions.Accept;
-        }
+        return acceptableOffer;
+    }
+    
+    public double findAcceptableOfferDiscounted(double minimumOffer, double percentageTimeLeft, double myFirstBid, double difference) {
+    	double acceptableOffer;
+    	double discountFactor = 0.45-negotiationSession.getDiscountFactor();
+		
+		if (discountFactor > 0) {
+			acceptableOffer = minimumOffer - discountFactor;
+		} else {
+			acceptableOffer = minimumOffer;
+		}
         
-        // else: reject
-        return Actions.Reject;
+        return acceptableOffer;
     }
     
 	@Override
