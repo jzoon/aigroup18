@@ -5,6 +5,7 @@ import genius.core.bidding.BidDetails;
 import genius.core.boaframework.*;
 import genius.core.misc.Range;
 import genius.core.uncertainty.UserModel;
+import genius.core.utility.AdditiveUtilitySpace;
 
 import java.util.HashSet;
 import java.util.List;
@@ -25,9 +26,12 @@ public class Group18_BS extends OfferingStrategy {
         // get outcome and utility spaces and list of issues in this domain
         outcomespace = new SortedOutcomeSpace(negotiationSession.getUtilitySpace());
 
+        // preference uncertainty
+        AdditiveUtilitySpace utilitySpaceEstimate = (AdditiveUtilitySpace) negotiationSession.getUtilitySpace().copy();
         UserModel userModel = negotiationSession.getUserModel();
             if (userModel != null) {
                 List<Bid> bidOrder = userModel.getBidRanking().getBidOrder();
+                UtilityFunctionEstimate utilityFunctionEstimate = new UtilityFunctionEstimate(utilitySpaceEstimate);
             }
     }
 
