@@ -1,8 +1,10 @@
 package ai2018.group18;
 
+import genius.core.Bid;
 import genius.core.bidding.BidDetails;
 import genius.core.boaframework.*;
 import genius.core.misc.Range;
+import genius.core.uncertainty.UserModel;
 
 import java.util.HashSet;
 import java.util.List;
@@ -22,6 +24,11 @@ public class Group18_BS extends OfferingStrategy {
 
         // get outcome and utility spaces and list of issues in this domain
         outcomespace = new SortedOutcomeSpace(negotiationSession.getUtilitySpace());
+
+        UserModel userModel = negotiationSession.getUserModel();
+            if (userModel != null) {
+                List<Bid> bidOrder = userModel.getBidRanking().getBidOrder();
+            }
     }
 
     @Override
