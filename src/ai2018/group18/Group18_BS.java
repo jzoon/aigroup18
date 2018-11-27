@@ -3,15 +3,11 @@ package ai2018.group18;
 import genius.core.Bid;
 import genius.core.bidding.BidDetails;
 import genius.core.boaframework.*;
-import genius.core.issue.Issue;
-import genius.core.issue.IssueDiscrete;
-import genius.core.issue.ValueDiscrete;
 import genius.core.misc.Range;
 import genius.core.uncertainty.ExperimentalUserModel;
 import genius.core.uncertainty.UserModel;
 import genius.core.utility.AbstractUtilitySpace;
 import genius.core.utility.AdditiveUtilitySpace;
-import genius.core.utility.EvaluatorDiscrete;
 
 import java.util.HashSet;
 import java.util.List;
@@ -33,13 +29,16 @@ public class Group18_BS extends OfferingStrategy {
         // get outcome and utility spaces and list of issues in this domain
         outcomespace = new SortedOutcomeSpace(negotiationSession.getUtilitySpace());
 
-        // preference uncertainty
+        // preference uncertainty test to print estimate and real utility
         AdditiveUtilitySpace utilitySpaceEstimate = (AdditiveUtilitySpace) negotiationSession.getUtilitySpace().copy();
         UserModel userModel = negotiationSession.getUserModel();
+        // if "enable uncertainty" is checked
         if (userModel != null) {
             List<Bid> bidOrder = userModel.getBidRanking().getBidOrder();
+            // estimate value and issue weights
             utilityFunctionEstimate = new UtilityFunctionEstimate(utilitySpaceEstimate, bidOrder);
 
+            // if "grant parties access to real utility functions" is checked, you can get real utilities
             if (userModel instanceof ExperimentalUserModel) {
                 ExperimentalUserModel e = (ExperimentalUserModel) userModel;
                 AbstractUtilitySpace realUtilitySpace = e.getRealUtilitySpace();
@@ -48,7 +47,7 @@ public class Group18_BS extends OfferingStrategy {
                     System.out.println(utilityFunctionEstimate.getUtilityEstimate(bid) + "," + realUtilitySpace.getUtility(bid));
                 }
             }
-        }
+        } // end preference uncertainty test
     }
 
     @Override
