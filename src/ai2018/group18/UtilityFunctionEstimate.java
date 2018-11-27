@@ -7,38 +7,48 @@ import genius.core.utility.AdditiveUtilitySpace;
 import java.util.*;
 
 public class UtilityFunctionEstimate {
-    private AdditiveUtilitySpace utilitySpaceEstimate;
     private List<Bid> rankingList;
     private List<Integer> issueNumbers;
+    private List<Issue> issuesInThisDomain;
     private Map<Integer, Map<String, Double>> valueWeights;
     private Map<Integer, Double> issueWeights;
 
+    /**
+     * Constructor that estimates the value and issue weights given the ranked list of bids
+     * @param utilitySpaceEstimate
+     * @param rankingList
+     */
     public UtilityFunctionEstimate(AdditiveUtilitySpace utilitySpaceEstimate, List<Bid> rankingList) {
-        this.utilitySpaceEstimate = utilitySpaceEstimate;
+        // get ranked list of bids
         this.rankingList = rankingList;
 
-        // get list of issue numbers
+        // get list of issue numbers and list of issues
         issueNumbers = new ArrayList<>();
-        List<Issue> issuesInThisDomain = utilitySpaceEstimate.getDomain().getIssues();
+        issuesInThisDomain = utilitySpaceEstimate.getDomain().getIssues();
         for (Issue issue : issuesInThisDomain) {
             issueNumbers.add(issue.getNumber());
         }
 
+        // estimate value and issue weights
         valueWeights = estimateValueWeights();
         issueWeights = estimateIssueWeights();
     }
 
     /**
-     * Estimate value weights
+     * Estimate value weights with linearly spaced vector from 0 to 1
+     * @return normalized value weights matrix
      */
     private Map<Integer, Map<String, Double>> estimateValueWeights() {
-        Map<Integer, Map<String, Double>> valueWeights = initializeMatrix(); // Map<issueNumber, Map<valueNumber, Value>>
+        // initialize linearly spaced vector and an empty matrix:
+        // Map<issueNumber, Map<valueString, 0.0>>
         List<Double> linearUtility = linspace(0.0, 1.0, rankingList.size());
+        Map<Integer, Map<String, Double>> valueWeights = initializeMatrix();
 
-        // weighted frequency
-        weightedFrequency(valueWeights, linearUtility);
+        // compute matrix with weighted frequency analysis:
+        // Map<issueNumber, Map<valueString, weightedFrequency>>
+        computeWeightedFrequency(valueWeights, linearUtility);
 
-        // normalize by dividing by the max of each issue
+        // normalize issue columns by dividing by the max of each column
         for (int issueNumber : issueNumbers) {
             Map<String, Double> issueValues = valueWeights.get(issueNumber);
             double max = Collections.max(issueValues.values());
@@ -53,16 +63,21 @@ public class UtilityFunctionEstimate {
     }
 
     /**
-     * Estimate issue weights
+     * Estimate issue weights with linearly spaced vector from -1 to 1
+     * @return normalized issue weights vector
      */
     private Map<Integer, Double> estimateIssueWeights() {
-        Map<Integer, Map<String, Double>> matrix = initializeMatrix(); // Map<issueNumber, Map<valueNumber, Value>>
+        // initialize linearly spaced vector and an empty matrix:
+        // Map<issueNumber, Map<valueString, 0.0>>
         List<Double> linearUtility = linspace(-1.0, 1.0, rankingList.size());
+        Map<Integer, Map<String, Double>> matrix = initializeMatrix();
 
-        // weighted frequency
-        weightedFrequency(matrix, linearUtility);
+        // compute matrix with weighted frequency analysis:
+        // Map<issueNumber, Map<valueString, weightedFrequency>>
+        computeWeightedFrequency(matrix, linearUtility);
 
-        // get issue weights by taking the max of each issue
+        // get issue weights vector by taking the max of each issue column:
+        // Map<issueNumber, weightedFrequency>
         Map<Integer, Double> issueWeights = new HashMap<>();
         double sumIssueWeights = 0.0;
         for (int issueNumber : issueNumbers) {
@@ -72,7 +87,7 @@ public class UtilityFunctionEstimate {
             sumIssueWeights += max;
         }
 
-        // normalize by dividing by the max of issue weights
+        // normalize issue weights vector by dividing by the sum of the vector
         for (Map.Entry<Integer, Double> entry : issueWeights.entrySet()) {
             issueWeights.put(entry.getKey(), entry.getValue() / sumIssueWeights);
         }
@@ -82,44 +97,47 @@ public class UtilityFunctionEstimate {
 
 
     /**
-     * Initialize matrix
-     * @return Map<issueNumber, Map<valueNumber, zero>>
+     * Initialize empty matrix
+     * @return Map<issueNumber, Map<valueString, zero>>
      */
     private Map<Integer, Map<String, Double>> initializeMatrix() {
         Map<Integer, Map<String, Double>> matrix = new HashMap<>();
 
-        List<Issue> issuesInThisDomain = utilitySpaceEstimate.getDomain().getIssues();
+        // create column for each issue
         for (Issue issue : issuesInThisDomain) {
-            int issueNumber = issue.getNumber();
             IssueDiscrete issueDiscrete = (IssueDiscrete) issue;
+
+            // fill column with zeros
             Map<String, Double> issueValues = new HashMap<>();
             for (ValueDiscrete valueDiscrete : issueDiscrete.getValues()) {
                 issueValues.put(valueDiscrete.getValue(), 0.0);
             }
-            matrix.put(issueNumber, issueValues);
+            matrix.put(issue.getNumber(), issueValues);
         }
 
         return matrix;
     }
 
     /**
-     * Get weighted frequency from ranking list
+     * Compute matrix with weighted frequency analysis: Map<issueNumber, Map<valueString, weightedFrequency>>
      * @param matrix
      * @param linearUtility
      */
-    private void weightedFrequency(Map<Integer, Map<String, Double>> matrix, List<Double> linearUtility) {
-        List<Issue> issuesInThisDomain = utilitySpaceEstimate.getDomain().getIssues();
-
+    private void computeWeightedFrequency(Map<Integer, Map<String, Double>> matrix, List<Double> linearUtility) {
+        // frequency analysis of every bid i from the ranked list
         for (int i = 0; i < rankingList.size(); i++) {
             Map<Integer, Value> bidValues = rankingList.get(i).getValues();
+
+            // for every issue add linearly spaced utility u_i to the matrix
             for (Issue issue : issuesInThisDomain) {
                 int issueNumber = issue.getNumber();
                 ValueDiscrete valueDiscrete = (ValueDiscrete) bidValues.get(issueNumber);
 
-                // add u_i
+                // add u_i to the corresponding issue-value in the matrix
                 Map<String, Double> values = matrix.get(issueNumber);
                 double currentValue = values.get(valueDiscrete.getValue());
-                values.replace(valueDiscrete.getValue(), currentValue + linearUtility.get(i));
+                double newValue = currentValue + linearUtility.get(i);
+                values.replace(valueDiscrete.getValue(), newValue);
                 matrix.replace(issueNumber, values);
             }
         }
@@ -155,15 +173,15 @@ public class UtilityFunctionEstimate {
     public Double getUtilityEstimate(Bid bid) {
         double utility = 0.0;
 
-        List<Issue> issuesInThisDomain = utilitySpaceEstimate.getDomain().getIssues();
         Map<Integer, Value> bidValues = bid.getValues();
         for (Issue issue : issuesInThisDomain) {
             int issueNumber = issue.getNumber();
-            // get value of this issue for the bid
             ValueDiscrete valueDiscrete = (ValueDiscrete) bidValues.get(issueNumber);
 
             // add utility contribution for this issue
-            utility += issueWeights.get(issueNumber) * valueWeights.get(issueNumber).get(valueDiscrete.getValue());
+            double issueWeight = issueWeights.get(issueNumber);
+            double valueWeight = valueWeights.get(issueNumber).get(valueDiscrete.getValue());
+            utility += issueWeight * valueWeight;
         }
 
         return utility;
