@@ -186,4 +186,12 @@ public class UtilityFunctionEstimate {
 
         return utility;
     }
+
+    public  Map<Integer, Map<String, Double>> getValueWeights() {
+        return valueWeights;
+    }
+
+    public Map<Integer, Double> getIssueWeights() {
+        return issueWeights;
+    }
 }

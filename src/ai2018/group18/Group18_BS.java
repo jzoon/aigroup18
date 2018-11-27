@@ -3,11 +3,16 @@ package ai2018.group18;
 import genius.core.Bid;
 import genius.core.bidding.BidDetails;
 import genius.core.boaframework.*;
+import genius.core.issue.IssueDiscrete;
+import genius.core.issue.Objective;
+import genius.core.issue.ValueDiscrete;
 import genius.core.misc.Range;
 import genius.core.uncertainty.ExperimentalUserModel;
 import genius.core.uncertainty.UserModel;
 import genius.core.utility.AbstractUtilitySpace;
 import genius.core.utility.AdditiveUtilitySpace;
+import genius.core.utility.Evaluator;
+import genius.core.utility.EvaluatorDiscrete;
 
 import java.util.HashSet;
 import java.util.List;
@@ -31,12 +36,14 @@ public class Group18_BS extends OfferingStrategy {
 
         // preference uncertainty test to print estimate and real utility
         AdditiveUtilitySpace utilitySpaceEstimate = (AdditiveUtilitySpace) negotiationSession.getUtilitySpace().copy();
+        SortedOutcomeSpace outcomespaceEstimate = new SortedOutcomeSpace(utilitySpaceEstimate);
         UserModel userModel = negotiationSession.getUserModel();
         // if "enable uncertainty" is checked
         if (userModel != null) {
             List<Bid> bidOrder = userModel.getBidRanking().getBidOrder();
             // estimate value and issue weights
             utilityFunctionEstimate = new UtilityFunctionEstimate(utilitySpaceEstimate, bidOrder);
+            utilitySpaceEstimate = setWeightsOfUtilitySpace(utilitySpaceEstimate);
 
             // if "grant parties access to real utility functions" is checked, you can get real utilities
             if (userModel instanceof ExperimentalUserModel) {
@@ -44,10 +51,38 @@ public class Group18_BS extends OfferingStrategy {
                 AbstractUtilitySpace realUtilitySpace = e.getRealUtilitySpace();
 
                 for(Bid bid : bidOrder) {
-                    System.out.println(utilityFunctionEstimate.getUtilityEstimate(bid) + "," + realUtilitySpace.getUtility(bid));
+                    System.out.println(utilityFunctionEstimate.getUtilityEstimate(bid)
+                            + "," + utilitySpaceEstimate.getUtility(bid)
+                            + "," + realUtilitySpace.getUtility(bid));
                 }
             }
         } // end preference uncertainty test
+    }
+
+    public AdditiveUtilitySpace setWeightsOfUtilitySpace(AdditiveUtilitySpace utilitySpace) {
+        Map<Integer, Map<String, Double>> valueWeights = utilityFunctionEstimate.getValueWeights();
+        Map<Integer, Double> issueWeights = utilityFunctionEstimate.getIssueWeights();
+
+        // for every issue in this domain
+        for (Map.Entry<Objective, Evaluator> e : utilitySpace.getEvaluators()) {
+
+            // clear a lock on the weight of an objective or issue.
+            utilitySpace.unlock(e.getKey());
+
+            // set issue weight for this issue
+            int issueNumber = e.getKey().getNumber();
+            double issueWeight = issueWeights.get(issueNumber);
+            e.getValue().setWeight(issueWeight);
+
+            // set all values weights for this issue
+            Map<String, Double> valueWeightsForThisIssue = valueWeights.get(issueNumber);
+            for (ValueDiscrete valueDiscrete : ((IssueDiscrete) e.getKey()).getValues()) {
+                double valueWeight = valueWeightsForThisIssue.get(valueDiscrete.getValue());
+                ((EvaluatorDiscrete) e.getValue()).setEvaluationDouble(valueDiscrete, valueWeight);
+            }
+        }
+
+        return utilitySpace;
     }
 
     @Override
