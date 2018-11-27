@@ -3,16 +3,9 @@ package ai2018.group18;
 import genius.core.Bid;
 import genius.core.bidding.BidDetails;
 import genius.core.boaframework.*;
-import genius.core.issue.IssueDiscrete;
-import genius.core.issue.Objective;
-import genius.core.issue.ValueDiscrete;
 import genius.core.misc.Range;
-import genius.core.uncertainty.ExperimentalUserModel;
 import genius.core.uncertainty.UserModel;
-import genius.core.utility.AbstractUtilitySpace;
 import genius.core.utility.AdditiveUtilitySpace;
-import genius.core.utility.Evaluator;
-import genius.core.utility.EvaluatorDiscrete;
 
 import java.util.HashSet;
 import java.util.List;
@@ -20,8 +13,9 @@ import java.util.Map;
 import java.util.Set;
 
 public class Group18_BS extends OfferingStrategy {
-	
-    SortedOutcomeSpace outcomespace;
+
+    UserModel userModel;
+    SortedOutcomeSpace outcomeSpace;
     UtilityFunctionEstimate utilityFunctionEstimate;
 
     @Override
@@ -31,63 +25,28 @@ public class Group18_BS extends OfferingStrategy {
         this.opponentModel = opponentModel;
         this.omStrategy = omStrategy;
 
-        // get outcome and utility spaces and list of issues in this domain
-        outcomespace = new SortedOutcomeSpace(negotiationSession.getUtilitySpace());
+        userModel = negotiationSession.getUserModel();
+        if (userModel != null) { // "enable uncertainty" is checked
 
-        // preference uncertainty test to print estimate and real utility
-        AdditiveUtilitySpace utilitySpaceEstimate = (AdditiveUtilitySpace) negotiationSession.getUtilitySpace().copy();
-        SortedOutcomeSpace outcomespaceEstimate = new SortedOutcomeSpace(utilitySpaceEstimate);
-        UserModel userModel = negotiationSession.getUserModel();
-        // if "enable uncertainty" is checked
-        if (userModel != null) {
+            // create utility space with estimated preferences
             List<Bid> bidOrder = userModel.getBidRanking().getBidOrder();
-            // estimate value and issue weights
+            AdditiveUtilitySpace utilitySpaceEstimate = (AdditiveUtilitySpace) negotiationSession.getUtilitySpace().copy();
             utilityFunctionEstimate = new UtilityFunctionEstimate(utilitySpaceEstimate, bidOrder);
-            utilitySpaceEstimate = setWeightsOfUtilitySpace(utilitySpaceEstimate);
+            utilitySpaceEstimate = utilityFunctionEstimate.getUtilitySpace();
 
-            // if "grant parties access to real utility functions" is checked, you can get real utilities
-            if (userModel instanceof ExperimentalUserModel) {
-                ExperimentalUserModel e = (ExperimentalUserModel) userModel;
-                AbstractUtilitySpace realUtilitySpace = e.getRealUtilitySpace();
+            // create outcomeSpace from utility space estimate and set it for negotiation session
+            outcomeSpace = new SortedOutcomeSpace(utilitySpaceEstimate);
+            this.negotiationSession.setOutcomeSpace(outcomeSpace);
 
-                for(Bid bid : bidOrder) {
-                    System.out.println(utilityFunctionEstimate.getUtilityEstimate(bid)
-                            + "," + utilitySpaceEstimate.getUtility(bid)
-                            + "," + realUtilitySpace.getUtility(bid));
-                }
-            }
-        } // end preference uncertainty test
-    }
+        } else { // "enable uncertainty" is unchecked
 
-    public AdditiveUtilitySpace setWeightsOfUtilitySpace(AdditiveUtilitySpace utilitySpace) {
-        Map<Integer, Map<String, Double>> valueWeights = utilityFunctionEstimate.getValueWeights();
-        Map<Integer, Double> issueWeights = utilityFunctionEstimate.getIssueWeights();
-
-        // for every issue in this domain
-        for (Map.Entry<Objective, Evaluator> e : utilitySpace.getEvaluators()) {
-
-            // clear a lock on the weight of an objective or issue.
-            utilitySpace.unlock(e.getKey());
-
-            // set issue weight for this issue
-            int issueNumber = e.getKey().getNumber();
-            double issueWeight = issueWeights.get(issueNumber);
-            e.getValue().setWeight(issueWeight);
-
-            // set all values weights for this issue
-            Map<String, Double> valueWeightsForThisIssue = valueWeights.get(issueNumber);
-            for (ValueDiscrete valueDiscrete : ((IssueDiscrete) e.getKey()).getValues()) {
-                double valueWeight = valueWeightsForThisIssue.get(valueDiscrete.getValue());
-                ((EvaluatorDiscrete) e.getValue()).setEvaluationDouble(valueDiscrete, valueWeight);
-            }
+            outcomeSpace = new SortedOutcomeSpace(negotiationSession.getUtilitySpace());
         }
-
-        return utilitySpace;
     }
 
     @Override
     public BidDetails determineOpeningBid() {
-        return outcomespace.getMaxBidPossible();
+        return outcomeSpace.getMaxBidPossible();
     }
 
     /**
@@ -96,7 +55,7 @@ public class Group18_BS extends OfferingStrategy {
     @Override
     public BidDetails determineNextBid() {
         // update opponent model
-        opponentModel.updateModel(outcomespace.getMaxBidPossible().getBid());
+        opponentModel.updateModel(outcomeSpace.getMaxBidPossible().getBid());
 
         // determine minimal utility of the next bid
         boolean discounted = false;
@@ -120,11 +79,15 @@ public class Group18_BS extends OfferingStrategy {
      */
     public double findLowerBound(boolean discounted) {
         // calculate lowest utility that we will ever propose
-    	double lowerBound = outcomespace.getMaxBidPossible().getMyUndiscountedUtil();
+    	double lowerBound = outcomeSpace.getMaxBidPossible().getMyUndiscountedUtil();
     	double lowestOffer = lowerBound / 1.4;
 
     	// find best offer of the opponent and compare to best offer possible
 	   	double minimumOffer = negotiationSession.getOpponentBidHistory().getBestBidDetails().getMyUndiscountedUtil();
+	   	if (userModel != null) { // "enable uncertainty" is checked
+            Bid bestBid = negotiationSession.getOpponentBidHistory().getBestBidDetails().getBid();
+	   	    minimumOffer = utilityFunctionEstimate.getUtilityEstimate(bestBid);
+        }
 		double difference = lowerBound - minimumOffer;
 		
 		// if best offer of the opponent is less than our best offer possible
@@ -164,7 +127,7 @@ public class Group18_BS extends OfferingStrategy {
      * @return list of bids which a utility in the given range.
      */
     public List<BidDetails> getAvailableBids(Range range) {
-    	return outcomespace.getBidsinRange(range);
+    	return outcomeSpace.getBidsinRange(range);
     }
 
     @Override

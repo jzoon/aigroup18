@@ -3,10 +3,13 @@ package ai2018.group18;
 import genius.core.Bid;
 import genius.core.issue.*;
 import genius.core.utility.AdditiveUtilitySpace;
+import genius.core.utility.Evaluator;
+import genius.core.utility.EvaluatorDiscrete;
 
 import java.util.*;
 
 public class UtilityFunctionEstimate {
+    private AdditiveUtilitySpace utilitySpace;
     private List<Bid> rankingList;
     private List<Integer> issueNumbers;
     private List<Issue> issuesInThisDomain;
@@ -15,16 +18,19 @@ public class UtilityFunctionEstimate {
 
     /**
      * Constructor that estimates the value and issue weights given the ranked list of bids
-     * @param utilitySpaceEstimate
+     * @param utilitySpace
      * @param rankingList
      */
-    public UtilityFunctionEstimate(AdditiveUtilitySpace utilitySpaceEstimate, List<Bid> rankingList) {
+    public UtilityFunctionEstimate(AdditiveUtilitySpace utilitySpace, List<Bid> rankingList) {
+        // save utilitySpace
+        this.utilitySpace = utilitySpace;
+
         // get ranked list of bids
         this.rankingList = rankingList;
 
         // get list of issue numbers and list of issues
         issueNumbers = new ArrayList<>();
-        issuesInThisDomain = utilitySpaceEstimate.getDomain().getIssues();
+        issuesInThisDomain = utilitySpace.getDomain().getIssues();
         for (Issue issue : issuesInThisDomain) {
             issueNumbers.add(issue.getNumber());
         }
@@ -32,6 +38,9 @@ public class UtilityFunctionEstimate {
         // estimate value and issue weights
         valueWeights = estimateValueWeights();
         issueWeights = estimateIssueWeights();
+
+        // set utility space with estimated value and issue weights
+        setWeightsOfUtilitySpace();
     }
 
     /**
@@ -95,6 +104,29 @@ public class UtilityFunctionEstimate {
         return issueWeights;
     }
 
+    /**
+     * After estimating value and issue weights, add them to utility space
+     */
+    private void setWeightsOfUtilitySpace() {
+        // for every issue in this domain
+        for (Map.Entry<Objective, Evaluator> e : utilitySpace.getEvaluators()) {
+
+            // clear a lock on the weight of an objective or issue.
+            utilitySpace.unlock(e.getKey());
+
+            // set issue weight for this issue
+            int issueNumber = e.getKey().getNumber();
+            double issueWeight = issueWeights.get(issueNumber);
+            e.getValue().setWeight(issueWeight);
+
+            // set all values weights for this issue
+            Map<String, Double> valueWeightsForThisIssue = valueWeights.get(issueNumber);
+            for (ValueDiscrete valueDiscrete : ((IssueDiscrete) e.getKey()).getValues()) {
+                double valueWeight = valueWeightsForThisIssue.get(valueDiscrete.getValue());
+                ((EvaluatorDiscrete) e.getValue()).setEvaluationDouble(valueDiscrete, valueWeight);
+            }
+        }
+    }
 
     /**
      * Initialize empty matrix
@@ -187,11 +219,7 @@ public class UtilityFunctionEstimate {
         return utility;
     }
 
-    public  Map<Integer, Map<String, Double>> getValueWeights() {
-        return valueWeights;
-    }
-
-    public Map<Integer, Double> getIssueWeights() {
-        return issueWeights;
+    public AdditiveUtilitySpace getUtilitySpace() {
+        return utilitySpace;
     }
 }
