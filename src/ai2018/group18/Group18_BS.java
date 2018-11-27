@@ -3,9 +3,15 @@ package ai2018.group18;
 import genius.core.Bid;
 import genius.core.bidding.BidDetails;
 import genius.core.boaframework.*;
+import genius.core.issue.Issue;
+import genius.core.issue.IssueDiscrete;
+import genius.core.issue.ValueDiscrete;
 import genius.core.misc.Range;
+import genius.core.uncertainty.ExperimentalUserModel;
 import genius.core.uncertainty.UserModel;
+import genius.core.utility.AbstractUtilitySpace;
 import genius.core.utility.AdditiveUtilitySpace;
+import genius.core.utility.EvaluatorDiscrete;
 
 import java.util.HashSet;
 import java.util.List;
@@ -15,6 +21,7 @@ import java.util.Set;
 public class Group18_BS extends OfferingStrategy {
 	
     SortedOutcomeSpace outcomespace;
+    UtilityFunctionEstimate utilityFunctionEstimate;
 
     @Override
     public void init(NegotiationSession negotiationSession, OpponentModel opponentModel, OMStrategy omStrategy,
@@ -29,10 +36,19 @@ public class Group18_BS extends OfferingStrategy {
         // preference uncertainty
         AdditiveUtilitySpace utilitySpaceEstimate = (AdditiveUtilitySpace) negotiationSession.getUtilitySpace().copy();
         UserModel userModel = negotiationSession.getUserModel();
-            if (userModel != null) {
-                List<Bid> bidOrder = userModel.getBidRanking().getBidOrder();
-                UtilityFunctionEstimate utilityFunctionEstimate = new UtilityFunctionEstimate(utilitySpaceEstimate);
+        if (userModel != null) {
+            List<Bid> bidOrder = userModel.getBidRanking().getBidOrder();
+            utilityFunctionEstimate = new UtilityFunctionEstimate(utilitySpaceEstimate, bidOrder);
+
+            if (userModel instanceof ExperimentalUserModel) {
+                ExperimentalUserModel e = (ExperimentalUserModel) userModel;
+                AbstractUtilitySpace realUtilitySpace = e.getRealUtilitySpace();
+
+                for(Bid bid : bidOrder) {
+                    System.out.println(utilityFunctionEstimate.getUtilityEstimate(bid) + "," + realUtilitySpace.getUtility(bid));
+                }
             }
+        }
     }
 
     @Override
