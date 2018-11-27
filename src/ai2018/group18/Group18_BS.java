@@ -14,9 +14,9 @@ import java.util.Set;
 
 public class Group18_BS extends OfferingStrategy {
 
-    UserModel userModel;
-    SortedOutcomeSpace outcomeSpace;
-    UtilityFunctionEstimate utilityFunctionEstimate;
+    private UserModel userModel;
+    private SortedOutcomeSpace outcomeSpace;
+    private UtilityFunctionEstimate utilityFunctionEstimate;
 
     @Override
     public void init(NegotiationSession negotiationSession, OpponentModel opponentModel, OMStrategy omStrategy,
