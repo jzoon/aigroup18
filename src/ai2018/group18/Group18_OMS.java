@@ -2,13 +2,11 @@ package ai2018.group18;
 
 import genius.core.Bid;
 import genius.core.bidding.BidDetails;
-import genius.core.boaframework.BOAparameter;
-import genius.core.boaframework.NegotiationSession;
-import genius.core.boaframework.OMStrategy;
-import genius.core.boaframework.OpponentModel;
+import genius.core.boaframework.*;
 import genius.core.issue.Issue;
 import genius.core.issue.Value;
 import genius.core.issue.ValueDiscrete;
+import genius.core.uncertainty.UserModel;
 import genius.core.utility.AbstractUtilitySpace;
 import genius.core.utility.AdditiveUtilitySpace;
 import genius.core.utility.EvaluatorDiscrete;
@@ -16,15 +14,30 @@ import genius.core.utility.EvaluatorDiscrete;
 import java.util.*;
 
 public class Group18_OMS extends OMStrategy {
-	
-    List<Double> gamma; // weights for the three reference bids
-    double bias; // lower bias gives higher ratings a higher probability to be chosen (between 0 and 1)
-    AbstractUtilitySpace utilitySpace;
-    AdditiveUtilitySpace additiveUtilitySpace;
-	
+
+    private UserModel userModel;
+    private UtilityFunctionEstimate utilityFunctionEstimate;
+    private AdditiveUtilitySpace additiveUtilitySpace;
+    private List<Double> gamma; // weights for the three reference bids
+    private double bias; // lower bias gives higher ratings a higher probability to be chosen (between 0 and 1)
+
 	@Override
 	public void init(NegotiationSession negotiationSession, OpponentModel model, Map<String, Double> parameters) {
 		super.init(negotiationSession, model, parameters);
+
+        userModel = negotiationSession.getUserModel();
+        if (userModel != null) { // "enable uncertainty" is checked
+
+            // create utility space with estimated preferences
+            List<Bid> bidOrder = userModel.getBidRanking().getBidOrder();
+            AdditiveUtilitySpace utilitySpaceEstimate = (AdditiveUtilitySpace) negotiationSession.getUtilitySpace().copy();
+            utilityFunctionEstimate = new UtilityFunctionEstimate(utilitySpaceEstimate, bidOrder);
+            additiveUtilitySpace = utilityFunctionEstimate.getUtilitySpace();
+
+        } else { // "enable uncertainty" is unchecked
+
+            additiveUtilitySpace = (AdditiveUtilitySpace) negotiationSession.getUtilitySpace();
+        }
 		
 		// initialize gamma and bias
         if (parameters != null && parameters.get("gamma_first") != null && parameters.get("gamma_best") != null &&
@@ -41,9 +54,6 @@ public class Group18_OMS extends OMStrategy {
             gamma.add(0.3);
             bias = 0.25;
         }
-		
-		utilitySpace = negotiationSession.getUtilitySpace();
-		additiveUtilitySpace = (AdditiveUtilitySpace) utilitySpace;
 	}
 
     /**
@@ -103,8 +113,8 @@ public class Group18_OMS extends OMStrategy {
                 ValueDiscrete value = (ValueDiscrete) values.get(issueNumber);
 
                 // get bid value and reference bid value
-                bidValueArray[j] = evaluatorDiscrete.getValue(value);
-                referenceBidValueArray[j] = evaluatorDiscrete.getValue(referenceValue);
+                bidValueArray[j] = evaluatorDiscrete.getDoubleValue(value);
+                referenceBidValueArray[j] = evaluatorDiscrete.getDoubleValue(referenceValue);
             }
 
             // calculate euclidean distance
