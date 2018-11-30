@@ -1,14 +1,14 @@
 package ai2018.group18;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import genius.core.boaframework.AcceptanceStrategy;
-import genius.core.boaframework.Actions;
-import genius.core.boaframework.BOAparameter;
-import genius.core.boaframework.NegotiationSession;
-import genius.core.boaframework.OfferingStrategy;
-import genius.core.boaframework.OpponentModel;
+import genius.core.Bid;
+import genius.core.bidding.BidDetails;
+import genius.core.boaframework.*;
+import genius.core.uncertainty.UserModel;
+import genius.core.utility.AdditiveUtilitySpace;
 
 /**
  * This acceptance class will accept bids if they are higher than the threshold,
@@ -17,27 +17,25 @@ import genius.core.boaframework.OpponentModel;
  */
 public class Group18_AS extends AcceptanceStrategy {
 
-	private double a;
-	private double b;
-	
-    /**
-     * Empty constructor for the BOA framework.
-     */
-    public Group18_AS() {
-    }
-
-    public Group18_AS(NegotiationSession negoSession, OfferingStrategy strat, double alpha, double beta) {
-        this.negotiationSession = negoSession;
-        this.offeringStrategy = strat;
-        this.a = alpha;
-        this.b = beta;
-    }
+    private UserModel userModel;
+    private UtilityFunctionEstimate utilityFunctionEstimate;
+    private double a;
+    private double b;
 
     @Override
     public void init(NegotiationSession negoSession, OfferingStrategy strat, OpponentModel opponentModel,
-                     Map<String, Double> parameters) throws Exception {
+                     Map<String, Double> parameters) {
         this.negotiationSession = negoSession;
         this.offeringStrategy = strat;
+
+        userModel = negotiationSession.getUserModel();
+        if (userModel != null) { // "enable uncertainty" is checked
+
+            // create utility space with estimated preferences
+            List<Bid> bidOrder = userModel.getBidRanking().getBidOrder();
+            AdditiveUtilitySpace utilitySpaceEstimate = (AdditiveUtilitySpace) negotiationSession.getUtilitySpace().copy();
+            utilityFunctionEstimate = new UtilityFunctionEstimate(utilitySpaceEstimate, bidOrder);
+        }
         
         if (parameters.get("a") != null || parameters.get("b") != null) {
 			a = parameters.get("a");
@@ -60,47 +58,83 @@ public class Group18_AS extends AcceptanceStrategy {
     @Override
     public Actions determineAcceptability() {
     	if (negotiationSession.getDiscountFactor() < 0.7) {
-    		return determineAcceptabilityAction(true);
+    	    if (userModel != null) {
+    	        return determineAcceptabilityAction(true, true);
+            } else {
+                return determineAcceptabilityAction(true, false);
+            }
     	} else {
-    		return determineAcceptabilityAction(false);
+    	    if (userModel != null) {
+    	        return determineAcceptabilityAction(false, true);
+            } else {
+                return determineAcceptabilityAction(false, false);
+            }
     	}
     }
     
     /**
-	 * Determines the acceptability based on the undiscounted acceptance function.
-	 * Acceptance function is based on the time left and the difference between our best offer and the opponents best offer.
-	 */
-    public Actions determineAcceptabilityAction(boolean discount) {
-    	double myFirstBid = 1;
-    	if (negotiationSession.getTimeline().getCurrentTime() > 1) {
-    		myFirstBid = negotiationSession.getOwnBidHistory().getFirstBidDetails().getMyUndiscountedUtil();
-    	} 
-        double opponentsBestBid = negotiationSession.getOpponentBidHistory().getBestBidDetails()
-                .getMyUndiscountedUtil();
-        double myNextBid = offeringStrategy.getNextBid().getMyUndiscountedUtil();
-        double lastOpponentBid = negotiationSession.getOpponentBidHistory().getLastBidDetails()
-                .getMyUndiscountedUtil();
-        
-        double percentageTimeLeft = (negotiationSession.getTimeline().getTotalTime() -
-                negotiationSession.getTimeline().getCurrentTime())/negotiationSession.getTimeline().getTotalTime();
-        
-        double minimumOffer = findMinimumOffer(myFirstBid, opponentsBestBid);
-        double difference = myFirstBid - opponentsBestBid;
-        
+     * Determines the acceptability based on the undiscounted acceptance function.
+     * Acceptance function is based on the time left and the difference between our best offer and the opponents best offer.
+     */
+    public Actions determineAcceptabilityAction(boolean discount, boolean uncertainty) {
+        // get percentage time left
+        double totalTime = negotiationSession.getTimeline().getTotalTime();
+        double currentTime = negotiationSession.getTimeline().getCurrentTime();
+        double percentageTimeLeft = (totalTime - currentTime) / totalTime;
+
+        // get utility of my first bid
+        double myFirstBidUtility = 1;
+        if (negotiationSession.getTimeline().getCurrentTime() > 1) {
+            BidDetails myFirstBidDetails = negotiationSession.getOwnBidHistory().getFirstBidDetails();
+            if (uncertainty) {
+                myFirstBidUtility = utilityFunctionEstimate.getUtilityEstimate(myFirstBidDetails.getBid());
+            } else {
+                myFirstBidUtility = myFirstBidDetails.getMyUndiscountedUtil();
+            }
+        }
+
+        // get utility of my next bid
+        BidDetails myNextBidDetails = offeringStrategy.getNextBid();
+        double myNextBidUtility = myNextBidDetails.getMyUndiscountedUtil();
+        if (uncertainty) {
+            myNextBidUtility = utilityFunctionEstimate.getUtilityEstimate(myNextBidDetails.getBid());
+        }
+
+        // get utility of best bid of the opponent
+        BidDetails opponentsBestBidDetails = negotiationSession.getOpponentBidHistory().getBestBidDetails();
+        double opponentsBestBidUtility = opponentsBestBidDetails.getMyUndiscountedUtil();
+        if (uncertainty) {
+            opponentsBestBidUtility = utilityFunctionEstimate.getUtilityEstimate(opponentsBestBidDetails.getBid());
+        }
+
+        // get utility of last bid of the opponent
+        BidDetails opponentsLastBidDetails = negotiationSession.getOpponentBidHistory().getLastBidDetails();
+        double opponentsLastBidUtility = opponentsLastBidDetails.getMyUndiscountedUtil();
+        if (uncertainty) {
+            opponentsLastBidUtility = utilityFunctionEstimate.getUtilityEstimate(opponentsLastBidDetails.getBid());
+        }
+
+        // find minimum offer that we are ever willing to accept
+        double minimumOffer = findMinimumOffer(myFirstBidUtility, opponentsBestBidUtility);
+
+        // calculate difference between our first bid and the best bid of the opponent
+        double difference = myFirstBidUtility - opponentsBestBidUtility;
+
+        // find minimum offer that we are willing to accept at the current time
         double acceptableOffer;
         if (discount) {
-        	acceptableOffer = findAcceptableOfferDiscounted(minimumOffer, percentageTimeLeft, myFirstBid, difference);
+            acceptableOffer = findAcceptableOfferDiscounted(minimumOffer);
         } else {
-        	acceptableOffer = findAcceptableOffer(minimumOffer, percentageTimeLeft, myFirstBid, difference);
+            acceptableOffer = findAcceptableOffer(minimumOffer, percentageTimeLeft, myFirstBidUtility, difference);
         }
 
         // Accept an offer if it is better than my next bid OR if it is better than the acceptableOffer variable
-        if (lastOpponentBid >= myNextBid && lastOpponentBid >= opponentsBestBid) {
+        if (opponentsLastBidUtility >= myNextBidUtility && opponentsLastBidUtility >= opponentsBestBidUtility) {
             return Actions.Accept;
-        } else if (lastOpponentBid >= acceptableOffer) {
+        } else if (opponentsLastBidUtility >= acceptableOffer) {
             return Actions.Accept;
         } else {
-        	return Actions.Reject;
+            return Actions.Reject;
         }
     }
     
@@ -111,9 +145,9 @@ public class Group18_AS extends AcceptanceStrategy {
      * @return minimimOffer
      */
     public double findMinimumOffer(double myFirstBid, double opponentsBestBid) {
-        double minimumOffer = 1;
-        if (myFirstBid/a > opponentsBestBid) {
-            minimumOffer = myFirstBid/a;
+        double minimumOffer;
+        if (myFirstBid / a > opponentsBestBid) {
+            minimumOffer = myFirstBid / a;
         } else {
             minimumOffer = opponentsBestBid;
         }
@@ -133,7 +167,7 @@ public class Group18_AS extends AcceptanceStrategy {
     public double findAcceptableOffer(double minimumOffer, double percentageTimeLeft, double myFirstBid, double difference) {
     	double acceptableOffer = minimumOffer;
         if (percentageTimeLeft > b) {
-        	acceptableOffer = myFirstBid - (difference*Math.pow((1-percentageTimeLeft), 2));
+        	acceptableOffer = myFirstBid - (difference * Math.pow((1 - percentageTimeLeft), 2));
         }
         
         return acceptableOffer;
@@ -149,7 +183,7 @@ public class Group18_AS extends AcceptanceStrategy {
      */
     public double findAcceptableOfferDiscounted(double minimumOffer, double percentageTimeLeft, double myFirstBid, double difference) {
     	double acceptableOffer;
-    	double discountFactor = 0.45-negotiationSession.getDiscountFactor();
+    	double discountFactor = 0.45 - negotiationSession.getDiscountFactor();
 		
 		if (discountFactor > 0) {
 			acceptableOffer = minimumOffer - discountFactor;
