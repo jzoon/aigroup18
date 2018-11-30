@@ -41,7 +41,7 @@ public class Group18_AS extends AcceptanceStrategy {
 			a = parameters.get("a");
 			b = parameters.get("b");
 		} else {
-			a = 1.2;
+			a = 1.4;
 			b = 0.02;
 		}
     }
@@ -173,7 +173,15 @@ public class Group18_AS extends AcceptanceStrategy {
         return acceptableOffer;
     }
     
-    public double findAcceptableOfferDiscounted(double minimumOffer) {
+    /**
+     * Finds an acceptable offer for a discounted domain, using a different function.
+     * @param minimumOffer
+     * @param percentageTimeLeft
+     * @param myFirstBid
+     * @param difference
+     * @return acceptableOffer utility
+     */
+    public double findAcceptableOfferDiscounted(double minimumOffer, double percentageTimeLeft, double myFirstBid, double difference) {
     	double acceptableOffer;
     	double discountFactor = 0.45 - negotiationSession.getDiscountFactor();
 		
@@ -190,7 +198,7 @@ public class Group18_AS extends AcceptanceStrategy {
 	public Set<BOAparameter> getParameterSpec() {
 
 		Set<BOAparameter> set = new HashSet<BOAparameter>();
-		set.add(new BOAparameter("a", 1.2,
+		set.add(new BOAparameter("a", 1.4,
 				"Acceptable bid becomes starting offer divided by a if that is higher than the timedependent bid"));
 		
 		set.add(new BOAparameter("b", 0.02,
