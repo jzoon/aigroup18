@@ -219,6 +219,10 @@ public class UtilityFunctionEstimate {
         return utility;
     }
 
+    /**
+     *
+     * @return AdditiveUtilitySpace with the estimated value and issue weights
+     */
     public AdditiveUtilitySpace getUtilitySpace() {
         return utilitySpace;
     }

@@ -7,7 +7,6 @@ import genius.core.issue.Issue;
 import genius.core.issue.Value;
 import genius.core.issue.ValueDiscrete;
 import genius.core.uncertainty.UserModel;
-import genius.core.utility.AbstractUtilitySpace;
 import genius.core.utility.AdditiveUtilitySpace;
 import genius.core.utility.EvaluatorDiscrete;
 
@@ -117,7 +116,7 @@ public class Group18_OMS extends OMStrategy {
                 referenceBidValueArray[j] = evaluatorDiscrete.getDoubleValue(referenceValue);
             }
 
-            // calculate euclidean distance
+            // calculate weighted euclidean distance
             double distance = euclideanDistance(omegaArray, bidValueArray, referenceBidValueArray);
 
             // sum weighted distance
@@ -200,7 +199,7 @@ public class Group18_OMS extends OMStrategy {
    }
    
    /**
-   *
+   * calculate weighted euclidean distance
    * @param omega issues weights
    * @param a issues values
    * @param b reference issues values

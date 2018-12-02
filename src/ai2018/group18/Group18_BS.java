@@ -66,7 +66,7 @@ public class Group18_BS extends OfferingStrategy {
         double upperBound = 1;
         Range range = new Range(lowerBound, upperBound);
 
-        // get available bids greater than minimal utility and get reference bids
+        // get available bids greater than minimal utility
         List<BidDetails> availableBids = getAvailableBids(range);
 
         // return bid that is drawn from the available bids
@@ -92,13 +92,15 @@ public class Group18_BS extends OfferingStrategy {
 		
 		// if best offer of the opponent is less than our best offer possible
 		if (difference >= 0) {
-			double percentageTimeLeft = (negotiationSession.getTimeline().getTotalTime() -
-					negotiationSession.getTimeline().getCurrentTime()) / negotiationSession.getTimeline().getTotalTime();
+            // get percentage time left
+            double totalTime = negotiationSession.getTimeline().getTotalTime();
+            double currentTime = negotiationSession.getTimeline().getCurrentTime();
+            double percentageTimeLeft = (totalTime - currentTime) / totalTime;
 
 			// calculate utility of acceptable offer depending on the time left
 			double acceptableOffer;
 			if (discounted) {
-				double discountFactor = 0.45-negotiationSession.getDiscountFactor();
+				double discountFactor = 0.45 - negotiationSession.getDiscountFactor();
 				
 				if (discountFactor > 0) {
 					acceptableOffer = minimumOffer - discountFactor;

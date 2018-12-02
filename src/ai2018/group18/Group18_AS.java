@@ -19,8 +19,8 @@ public class Group18_AS extends AcceptanceStrategy {
 
     private UserModel userModel;
     private UtilityFunctionEstimate utilityFunctionEstimate;
-    private double a;
-    private double b;
+    private double a; // alpha
+    private double b; // beta
 
     @Override
     public void init(NegotiationSession negoSession, OfferingStrategy strat, OpponentModel opponentModel,
@@ -36,7 +36,8 @@ public class Group18_AS extends AcceptanceStrategy {
             AdditiveUtilitySpace utilitySpaceEstimate = (AdditiveUtilitySpace) negotiationSession.getUtilitySpace().copy();
             utilityFunctionEstimate = new UtilityFunctionEstimate(utilitySpaceEstimate, bidOrder);
         }
-        
+
+        // initialize alpha and beta
         if (parameters.get("a") != null || parameters.get("b") != null) {
 			a = parameters.get("a");
 			b = parameters.get("b");
@@ -145,14 +146,11 @@ public class Group18_AS extends AcceptanceStrategy {
      * @return minimimOffer
      */
     public double findMinimumOffer(double myFirstBid, double opponentsBestBid) {
-        double minimumOffer;
         if (myFirstBid / a > opponentsBestBid) {
-            minimumOffer = myFirstBid / a;
+            return myFirstBid / a;
         } else {
-            minimumOffer = opponentsBestBid;
+            return opponentsBestBid;
         }
-        
-        return minimumOffer;
     }
     
     /**
@@ -165,33 +163,26 @@ public class Group18_AS extends AcceptanceStrategy {
      * @return acceptableOffer utility
      */
     public double findAcceptableOffer(double minimumOffer, double percentageTimeLeft, double myFirstBid, double difference) {
-    	double acceptableOffer = minimumOffer;
         if (percentageTimeLeft > b) {
-        	acceptableOffer = myFirstBid - (difference * Math.pow((1 - percentageTimeLeft), 2));
+        	return myFirstBid - (difference * Math.pow((1 - percentageTimeLeft), 2));
+        } else {
+            return minimumOffer;
         }
-        
-        return acceptableOffer;
     }
     
     /**
      * Finds an acceptable offer for a discounted domain, using a different function.
      * @param minimumOffer
-     * @param percentageTimeLeft
-     * @param myFirstBid
-     * @param difference
      * @return acceptableOffer utility
      */
-    public double findAcceptableOfferDiscounted(double minimumOffer, double percentageTimeLeft, double myFirstBid, double difference) {
-    	double acceptableOffer;
+    public double findAcceptableOfferDiscounted(double minimumOffer) {
     	double discountFactor = 0.45 - negotiationSession.getDiscountFactor();
 		
 		if (discountFactor > 0) {
-			acceptableOffer = minimumOffer - discountFactor;
+			return minimumOffer - discountFactor;
 		} else {
-			acceptableOffer = minimumOffer;
+			return minimumOffer;
 		}
-        
-        return acceptableOffer;
     }
     
 	@Override

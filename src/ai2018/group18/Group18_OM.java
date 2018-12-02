@@ -17,14 +17,14 @@ public class Group18_OM extends OpponentModel {
     int amountOfIssues;
 
     @Override
-    public void init(NegotiationSession negotiationSession,
-                     Map<String, Double> parameters) {
+    public void init(NegotiationSession negotiationSession, Map<String, Double> parameters) {
         this.negotiationSession = negotiationSession;
 
         // get outcome and utility spaces and list of issues in this domain
         opponentUtilitySpace = (AdditiveUtilitySpace) negotiationSession.getUtilitySpace().copy();
         amountOfIssues = opponentUtilitySpace.getDomain().getIssues().size();
 
+        // initialize value and issue weights
         initializeOmega();
     }
 
