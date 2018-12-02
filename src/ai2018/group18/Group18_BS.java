@@ -17,6 +17,7 @@ public class Group18_BS extends OfferingStrategy {
     private UserModel userModel;
     private SortedOutcomeSpace outcomeSpace;
     private UtilityFunctionEstimate utilityFunctionEstimate;
+    private boolean uncertainty;
 
     @Override
     public void init(NegotiationSession negotiationSession, OpponentModel opponentModel, OMStrategy omStrategy,
@@ -92,10 +93,7 @@ public class Group18_BS extends OfferingStrategy {
 		
 		// if best offer of the opponent is less than our best offer possible
 		if (difference >= 0) {
-            // get percentage time left
-            double totalTime = negotiationSession.getTimeline().getTotalTime();
-            double currentTime = negotiationSession.getTimeline().getCurrentTime();
-            double percentageTimeLeft = (totalTime - currentTime) / totalTime;
+            double percentageTimeLeft = getPercentageTimeLeft();
 
 			// calculate utility of acceptable offer depending on the time left
 			double acceptableOffer;
@@ -130,6 +128,16 @@ public class Group18_BS extends OfferingStrategy {
      */
     public List<BidDetails> getAvailableBids(Range range) {
     	return outcomeSpace.getBidsinRange(range);
+    }
+
+    /**
+     *
+     * @return percentage time left
+     */
+    public double getPercentageTimeLeft() {
+        double totalTime = negotiationSession.getTimeline().getTotalTime();
+        double currentTime = negotiationSession.getTimeline().getCurrentTime();
+        return (totalTime - currentTime) / totalTime;
     }
 
     @Override

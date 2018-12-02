@@ -54,7 +54,7 @@ public class Group18_AS extends AcceptanceStrategy {
 	}
 
 	/**
-	 * Determines the acceptability based on the acceptance function.
+	 * Determines the acceptability based on the acceptance function, given (un)discounted or (un)certainty domain
 	 */
     @Override
     public Actions determineAcceptability() {
@@ -74,46 +74,18 @@ public class Group18_AS extends AcceptanceStrategy {
     }
     
     /**
-     * Determines the acceptability based on the undiscounted acceptance function.
+     * Determines the acceptability based on the acceptance function.
      * Acceptance function is based on the time left and the difference between our best offer and the opponents best offer.
+     * for (un)discounted or (un)certainty domains
      */
     public Actions determineAcceptabilityAction(boolean discount, boolean uncertainty) {
-        // get percentage time left
-        double totalTime = negotiationSession.getTimeline().getTotalTime();
-        double currentTime = negotiationSession.getTimeline().getCurrentTime();
-        double percentageTimeLeft = (totalTime - currentTime) / totalTime;
+        double percentageTimeLeft = getPercentageTimeLeft();
 
-        // get utility of my first bid
-        double myFirstBidUtility = 1;
-        if (negotiationSession.getTimeline().getCurrentTime() > 1) {
-            BidDetails myFirstBidDetails = negotiationSession.getOwnBidHistory().getFirstBidDetails();
-            if (uncertainty) {
-                myFirstBidUtility = utilityFunctionEstimate.getUtilityEstimate(myFirstBidDetails.getBid());
-            } else {
-                myFirstBidUtility = myFirstBidDetails.getMyUndiscountedUtil();
-            }
-        }
-
-        // get utility of my next bid
-        BidDetails myNextBidDetails = offeringStrategy.getNextBid();
-        double myNextBidUtility = myNextBidDetails.getMyUndiscountedUtil();
-        if (uncertainty) {
-            myNextBidUtility = utilityFunctionEstimate.getUtilityEstimate(myNextBidDetails.getBid());
-        }
-
-        // get utility of best bid of the opponent
-        BidDetails opponentsBestBidDetails = negotiationSession.getOpponentBidHistory().getBestBidDetails();
-        double opponentsBestBidUtility = opponentsBestBidDetails.getMyUndiscountedUtil();
-        if (uncertainty) {
-            opponentsBestBidUtility = utilityFunctionEstimate.getUtilityEstimate(opponentsBestBidDetails.getBid());
-        }
-
-        // get utility of last bid of the opponent
-        BidDetails opponentsLastBidDetails = negotiationSession.getOpponentBidHistory().getLastBidDetails();
-        double opponentsLastBidUtility = opponentsLastBidDetails.getMyUndiscountedUtil();
-        if (uncertainty) {
-            opponentsLastBidUtility = utilityFunctionEstimate.getUtilityEstimate(opponentsLastBidDetails.getBid());
-        }
+        // get utility of my first bid, my next bid, opponent's best bid, opponent's last bid
+        double myFirstBidUtility = getMyFirstBidUtility(uncertainty);
+        double myNextBidUtility = getMyNextBidUtility(uncertainty);
+        double opponentsBestBidUtility = getOpponentsBestBidUtility(uncertainty);
+        double opponentsLastBidUtility = getOpponentsLastBidUtility(uncertainty);
 
         // find minimum offer that we are ever willing to accept
         double minimumOffer = findMinimumOffer(myFirstBidUtility, opponentsBestBidUtility);
@@ -183,6 +155,76 @@ public class Group18_AS extends AcceptanceStrategy {
 		} else {
 			return minimumOffer;
 		}
+    }
+
+    /**
+     *
+     * @return percentage time left
+     */
+    public double getPercentageTimeLeft() {
+        double totalTime = negotiationSession.getTimeline().getTotalTime();
+        double currentTime = negotiationSession.getTimeline().getCurrentTime();
+        return (totalTime - currentTime) / totalTime;
+    }
+
+    /**
+     *
+     * @param uncertainty 
+     * @return get utility of my first bid
+     */
+    public double getMyFirstBidUtility(boolean uncertainty) {
+        if (negotiationSession.getTimeline().getCurrentTime() > 1) {
+            BidDetails myFirstBidDetails = negotiationSession.getOwnBidHistory().getFirstBidDetails();
+            if (uncertainty) {
+                return utilityFunctionEstimate.getUtilityEstimate(myFirstBidDetails.getBid());
+            } else {
+                return myFirstBidDetails.getMyUndiscountedUtil();
+            }
+        } else {
+            return 1;
+        }
+    }
+
+    /**
+     *
+     * @param uncertainty
+     * @return get utility of my next bid
+     */
+    public double getMyNextBidUtility(boolean uncertainty) {
+        BidDetails myNextBidDetails = offeringStrategy.getNextBid();
+        if (uncertainty) {
+            return utilityFunctionEstimate.getUtilityEstimate(myNextBidDetails.getBid());
+        } else {
+            return myNextBidDetails.getMyUndiscountedUtil();
+        }
+    }
+
+    /**
+     *
+     * @param uncertainty
+     * @return get utility of the best bid of the opponent
+     */
+    public double getOpponentsBestBidUtility(boolean uncertainty) {
+        BidDetails opponentsBestBidDetails = negotiationSession.getOpponentBidHistory().getBestBidDetails();
+        if (uncertainty) {
+            return utilityFunctionEstimate.getUtilityEstimate(opponentsBestBidDetails.getBid());
+        } else {
+            return opponentsBestBidDetails.getMyUndiscountedUtil();
+        }
+    }
+
+    /**
+     *
+     * @param uncertainty
+     * @return get utility of the last bid of the opponent
+     */
+    public double getOpponentsLastBidUtility(boolean uncertainty) {
+        BidDetails opponentsLastBidDetails = negotiationSession.getOpponentBidHistory().getLastBidDetails();
+        if (uncertainty) {
+            return utilityFunctionEstimate.getUtilityEstimate(opponentsLastBidDetails.getBid());
+        } else {
+            return opponentsLastBidDetails.getMyUndiscountedUtil();
+        }
     }
     
 	@Override
