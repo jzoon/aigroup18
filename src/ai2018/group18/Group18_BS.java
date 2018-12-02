@@ -17,7 +17,6 @@ public class Group18_BS extends OfferingStrategy {
     private UserModel userModel;
     private SortedOutcomeSpace outcomeSpace;
     private UtilityFunctionEstimate utilityFunctionEstimate;
-    private boolean uncertainty;
 
     @Override
     public void init(NegotiationSession negotiationSession, OpponentModel opponentModel, OMStrategy omStrategy,
